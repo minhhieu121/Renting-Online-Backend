@@ -1,0 +1,958 @@
+openapi: 3.0.0
+info:
+  title: BorrowIt API
+  description: |
+    Backend API for BorrowIt - A rental platform where users can rent and lend items.
+    
+    ## Authentication
+    Most endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your_token>
+    ```
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@borrowit.com
+
+servers:
+  - url: http://localhost:3456
+    description: Development server
+  - url: http://localhost:3456/api
+    description: Development server with API prefix
+
+tags:
+  - name: Users
+    description: User management and authentication
+  - name: Products
+    description: Product management and listing
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        full_name:
+          type: string
+          example: John Doe
+        phone:
+          type: string
+          example: "+1234567890"
+        avatar_url:
+          type: string
+          format: uri
+          example: https://example.com/avatar.jpg
+        address:
+          type: string
+          example: "123 Main St, City"
+        role:
+          type: string
+          enum: [customer, seller, admin]
+          example: customer
+        status:
+          type: string
+          enum: [active, suspended, banned]
+          example: active
+        rating:
+          type: number
+          format: float
+          example: 4.5
+        total_orders:
+          type: integer
+          example: 10
+        email_verified:
+          type: boolean
+          example: true
+        last_login_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    Product:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 1
+        seller_id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: "Canon EOS R5 Camera"
+        description:
+          type: string
+          example: "Professional mirrorless camera in excellent condition"
+        category:
+          type: string
+          enum: [Electronics, Clothes, Furniture, Sports, Books, Tools, Vehicles, Other]
+          example: Electronics
+        price_per_day:
+          type: number
+          format: float
+          example: 50.00
+        sale_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 10
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          example: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
+        location:
+          type: string
+          example: "New York, NY"
+        status:
+          type: string
+          enum: [available, rented, unavailable]
+          example: available
+        condition:
+          type: string
+          enum: [new, like_new, good, fair, poor]
+          example: like_new
+        rating:
+          type: number
+          format: float
+          example: 4.8
+        total_reviews:
+          type: integer
+          example: 25
+        total_rentals:
+          type: integer
+          example: 15
+        min_rental_days:
+          type: integer
+          example: 1
+        max_rental_days:
+          type: integer
+          example: 30
+        deposit:
+          type: number
+          format: float
+          example: 200.00
+        product_average_rating:
+          type: number
+          format: float
+          example: 4.5
+        seller_username:
+          type: string
+          example: johndoe
+        seller_name:
+          type: string
+          example: John Doe
+        seller_avatar:
+          type: string
+          format: uri
+        seller_rating:
+          type: number
+          format: float
+          example: 4.7
+        seller_total_orders:
+          type: integer
+          example: 20
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation successful
+        data:
+          type: object
+    
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Error message
+        error:
+          type: string
+          example: Detailed error information
+    
+    PaginationResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 10
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the server is running
+      tags: [System]
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Server is running
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/users/register:
+    post:
+      summary: Register new user
+      description: Create a new user account
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  example: johndoe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: securePassword123
+                fullName:
+                  type: string
+                  example: John Doe
+                phone:
+                  type: string
+                  example: "+1234567890"
+                role:
+                  type: string
+                  enum: [customer, seller]
+                  default: customer
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User registered successfully
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: User already exists or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/login:
+    post:
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: securePassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Login successful
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Account banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users:
+    get:
+      summary: Get all users
+      description: Retrieve a paginated list of all users with optional filters
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [customer, seller, admin]
+          description: Filter by user role
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, banned]
+          description: Filter by user status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by username, email, or full name
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      summary: Update user
+      description: Update user information
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                avatarUrl:
+                  type: string
+                address:
+                  type: string
+                role:
+                  type: string
+                  enum: [customer, seller, admin]
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      summary: Delete user
+      description: Delete a user account
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/products:
+    get:
+      summary: Get all products
+      description: Retrieve a paginated list of all products with optional filters
+      tags: [Products]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [Electronics, Clothes, Furniture, Sports, Books, Tools, Vehicles, Other]
+          description: Filter by category
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, rented, unavailable]
+          description: Filter by status
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+          description: Minimum price per day
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+          description: Maximum price per day
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Filter by location
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in product name and description
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: created_at
+            enum: [created_at, price_per_day, rating, name]
+          description: Sort field
+        - name: order
+          in: query
+          schema:
+            type: string
+            default: DESC
+            enum: [ASC, DESC]
+          description: Sort order
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      summary: Create new product
+      description: Create a new product listing (Seller only)
+      tags: [Products]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sellerId
+                - name
+                - category
+                - pricePerDay
+                - location
+              properties:
+                sellerId:
+                  type: integer
+                  example: 2
+                name:
+                  type: string
+                  example: "Canon EOS R5 Camera"
+                description:
+                  type: string
+                  example: "Professional mirrorless camera"
+                category:
+                  type: string
+                  enum: [Electronics, Clothes, Furniture, Sports, Books, Tools, Vehicles, Other]
+                  example: Electronics
+                pricePerDay:
+                  type: number
+                  format: float
+                  example: 50.00
+                salePercentage:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  example: 10
+                images:
+                  type: array
+                  items:
+                    type: string
+                  example: ["https://example.com/image1.jpg"]
+                location:
+                  type: string
+                  example: "New York, NY"
+                condition:
+                  type: string
+                  enum: [new, like_new, good, fair, poor]
+                  example: like_new
+                minRentalDays:
+                  type: integer
+                  example: 1
+                maxRentalDays:
+                  type: integer
+                  example: 30
+                deposit:
+                  type: number
+                  format: float
+                  example: 200.00
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product created successfully
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Seller not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/products/{id}:
+    get:
+      summary: Get product by ID
+      description: Retrieve a specific product by its ID
+      tags: [Products]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      summary: Update product
+      description: Update product information (Seller only)
+      tags: [Products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                  enum: [Electronics, Clothes, Furniture, Sports, Books, Tools, Vehicles, Other]
+                pricePerDay:
+                  type: number
+                  format: float
+                salePercentage:
+                  type: integer
+                images:
+                  type: array
+                  items:
+                    type: string
+                location:
+                  type: string
+                status:
+                  type: string
+                  enum: [available, rented, unavailable]
+                condition:
+                  type: string
+                  enum: [new, like_new, good, fair, poor]
+                minRentalDays:
+                  type: integer
+                maxRentalDays:
+                  type: integer
+                deposit:
+                  type: number
+                  format: float
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      summary: Delete product
+      description: Delete a product listing (Seller only)
+      tags: [Products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        '200':
+          description: Product deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/products/seller/{sellerId}:
+    get:
+      summary: Get products by seller
+      description: Retrieve all products from a specific seller
+      tags: [Products]
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Seller user ID
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/products/categories/list:
+    get:
+      summary: Get all categories
+      description: Retrieve list of available product categories
+      tags: [Products]
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: string
+                    example: [Electronics, Clothes, Furniture, Sports, Books, Tools, Vehicles, Other]
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

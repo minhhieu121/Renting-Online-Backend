@@ -1,359 +1,394 @@
 # BorrowIt Backend API
 
-Backend server for BorrowIt - A rental platform where users can rent products.
+A RESTful API for BorrowIt - A rental platform where users can rent and lend items.
 
-## Tech Stack
+## 🎯 Overview
 
-- **Node.js** with **Express.js**
-- **PostgreSQL** (Supabase)
-- **Sequelize** ORM
-- **JWT** for authentication
-- **Bcrypt** for password hashing
+BorrowIt is a peer-to-peer rental marketplace backend that allows users to:
+- Register and authenticate as customers or sellers
+- List items for rent
+- Browse and search available products
+- Manage rental transactions
+- Rate and review products and users
 
-## Setup Instructions
+## 🛠 Tech Stack
 
-### 1. Install Dependencies
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL (via `postgres` package)
+- **Authentication**: JWT (JSON Web Tokens)
+- **Password Hashing**: bcrypt
+- **API Documentation**: OpenAPI 3.0 + Swagger UI
+- **Development**: nodemon
 
-```bash
-npm install
-```
-
-### 2. Environment Variables
-
-The `.env` file is already configured with your database credentials:
-
-```env
-PORT=5000
-DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
-DB_PORT=5432
-DB_NAME=postgres
-DB_USER=postgres.aohpptiayglrcvyelsns
-DB_PASSWORD=@Aa0123456789
-JWT_SECRET=your_jwt_secret_key_change_this_in_production
-JWT_EXPIRE=7d
-```
-
-### 3. Start the Server
-
-Development mode (with auto-reload):
-```bash
-npm run dev
-```
-
-Production mode:
-```bash
-npm start
-```
-
-The server will start on `http://localhost:5000`
-
-## Database Models
-
-### User Model
-
-Fields:
-- `id` (Integer, Primary Key)
-- `username` (String, Unique)
-- `email` (String, Unique)
-- `password` (String, Hashed)
-- `fullName` (String)
-- `phone` (String)
-- `avatar` (Text URL)
-- `address` (Text)
-- `role` (Enum: 'customer', 'seller', 'admin')
-- `status` (Enum: 'active', 'suspended', 'banned')
-- `rating` (Decimal 0-5)
-- `totalOrders` (Integer)
-- `emailVerified` (Boolean)
-- `lastLoginAt` (Date)
-
-### Product Model
-
-Fields:
-- `id` (Integer, Primary Key)
-- `sellerId` (Integer, Foreign Key to User)
-- `name` (String)
-- `description` (Text)
-- `category` (Enum: 'Electronics', 'Clothes', 'Furniture', 'Sports', 'Books', 'Tools', 'Vehicles', 'Other')
-- `pricePerDay` (Decimal)
-- `salePercentage` (Integer 0-100)
-- `images` (Array of URLs)
-- `location` (String)
-- `status` (Enum: 'available', 'rented', 'unavailable')
-- `condition` (Enum: 'new', 'like_new', 'good', 'fair', 'poor')
-- `rating` (Decimal 0-5)
-- `totalReviews` (Integer)
-- `totalRentals` (Integer)
-- `minRentalDays` (Integer)
-- `maxRentalDays` (Integer)
-- `deposit` (Decimal)
-
-## API Endpoints
-
-### User APIs
-
-#### Register User
-```http
-POST /api/users/register
-Content-Type: application/json
-
-{
-  "username": "john_doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "fullName": "John Doe",
-  "phone": "+1234567890",
-  "role": "customer"
-}
-```
-
-#### Login User
-```http
-POST /api/users/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-#### Get All Users
-```http
-GET /api/users?page=1&limit=10&role=customer&search=john
-```
-
-Query Parameters:
-- `page` (default: 1)
-- `limit` (default: 10)
-- `role` (optional: customer, seller, admin)
-- `status` (optional: active, suspended, banned)
-- `search` (optional: search by username, email, or fullName)
-
-#### Get User by ID
-```http
-GET /api/users/:id
-```
-
-#### Update User
-```http
-PUT /api/users/:id
-Content-Type: application/json
-
-{
-  "fullName": "John Updated",
-  "phone": "+9876543210",
-  "address": "123 Main St"
-}
-```
-
-#### Delete User
-```http
-DELETE /api/users/:id
-```
-
-### Product APIs
-
-#### Create Product
-```http
-POST /api/products
-Content-Type: application/json
-
-{
-  "sellerId": 1,
-  "name": "Gaming Laptop",
-  "description": "High-performance gaming laptop",
-  "category": "Electronics",
-  "pricePerDay": 50.00,
-  "salePercentage": 10,
-  "images": [
-    "https://example.com/image1.jpg",
-    "https://example.com/image2.jpg"
-  ],
-  "location": "New York",
-  "condition": "like_new",
-  "minRentalDays": 1,
-  "maxRentalDays": 30,
-  "deposit": 200.00
-}
-```
-
-#### Get All Products
-```http
-GET /api/products?page=1&limit=10&category=Electronics&minPrice=10&maxPrice=100
-```
-
-Query Parameters:
-- `page` (default: 1)
-- `limit` (default: 10)
-- `category` (optional)
-- `status` (optional: available, rented, unavailable)
-- `minPrice` (optional)
-- `maxPrice` (optional)
-- `location` (optional)
-- `search` (optional: search by name or description)
-- `sortBy` (default: created_at)
-- `order` (default: DESC)
-
-#### Get Product by ID
-```http
-GET /api/products/:id
-```
-
-#### Get Products by Seller
-```http
-GET /api/products/seller/:sellerId?page=1&limit=10
-```
-
-#### Update Product
-```http
-PUT /api/products/:id
-Content-Type: application/json
-
-{
-  "name": "Updated Product Name",
-  "pricePerDay": 45.00,
-  "status": "available"
-}
-```
-
-#### Delete Product
-```http
-DELETE /api/products/:id
-```
-
-#### Get Categories
-```http
-GET /api/products/categories/list
-```
-
-## Response Format
-
-All API responses follow this format:
-
-### Success Response
-```json
-{
-  "success": true,
-  "message": "Operation successful",
-  "data": { ... }
-}
-```
-
-### Error Response
-```json
-{
-  "success": false,
-  "message": "Error message",
-  "error": "Detailed error information"
-}
-```
-
-### Paginated Response
-```json
-{
-  "success": true,
-  "data": {
-    "products": [ ... ],
-    "pagination": {
-      "total": 100,
-      "page": 1,
-      "limit": 10,
-      "totalPages": 10
-    }
-  }
-}
-```
-
-## Testing the API
-
-You can test the API using:
-
-1. **cURL**
-2. **Postman**
-3. **Thunder Client** (VS Code extension)
-4. **Insomnia**
-
-### Example cURL Request
-
-```bash
-# Register a user
-curl -X POST http://localhost:5000/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "test_user",
-    "email": "test@example.com",
-    "password": "password123",
-    "fullName": "Test User",
-    "role": "seller"
-  }'
-
-# Create a product
-curl -X POST http://localhost:5000/api/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sellerId": 1,
-    "name": "Test Product",
-    "description": "This is a test product",
-    "category": "Electronics",
-    "pricePerDay": 25.00,
-    "location": "Hanoi",
-    "condition": "good"
-  }'
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 be/
-├── config/
-│   └── database.js          # Database configuration
-├── controllers/
-│   ├── userController.js    # User business logic
-│   └── productController.js # Product business logic
-├── models/
-│   ├── User.js             # User model
-│   ├── Product.js          # Product model
-│   └── index.js            # Models export
-├── routes/
-│   ├── userRoutes.js       # User API routes
-│   └── productRoutes.js    # Product API routes
-├── .env                     # Environment variables
-├── .gitignore              # Git ignore file
-├── package.json            # Dependencies
-├── server.js               # Entry point
-└── README.md               # This file
+├── controllers/          # Request handlers and business logic
+│   ├── userController.js     # User authentication and management
+│   └── productController.js  # Product CRUD operations
+├── models/              # Database models and queries
+│   ├── User.js              # User model with DB operations
+│   └── Product.js           # Product model with DB operations
+├── routes/              # API route definitions
+│   ├── userRoutes.js        # User-related endpoints
+│   └── productRoutes.js     # Product-related endpoints
+├── db/                  # Database configuration and schema
+│   ├── index.js             # PostgreSQL connection setup
+│   └── schema.sql           # Database schema definitions
+├── .env                 # Environment variables (not in repo)
+├── index.js            # Application entry point
+├── openapi.yaml        # OpenAPI/Swagger specification
+├── package.json        # Project dependencies and scripts
+└── README.md           # This file
 ```
 
-## Features
+### Architecture Overview
 
-✅ User authentication (register/login)  
-✅ Password hashing with bcrypt  
-✅ JWT token generation  
-✅ User roles (customer, seller, admin)  
-✅ Product CRUD operations  
-✅ Product filtering and search  
-✅ Pagination support  
-✅ Seller-product relationship  
-✅ Input validation  
-✅ Error handling  
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Client (Frontend)                        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Express Server                           │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Middleware Layer                                       │ │
+│  │  - CORS                                                 │ │
+│  │  - Body Parser                                          │ │
+│  │  - Cookie Parser                                        │ │
+│  │  - Error Handler                                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Routes Layer                                           │ │
+│  │  - /api/users                                           │ │
+│  │  - /api/products                                        │ │
+│  │  - /health                                              │ │
+│  │  - /api-docs (Swagger)                                  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Controllers Layer                                      │ │
+│  │  - Business Logic                                       │ │
+│  │  - Request Validation                                   │ │
+│  │  - Response Formatting                                  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Models Layer                                           │ │
+│  │  - Database Queries                                     │ │
+│  │  - Data Validation                                      │ │
+│  │  - Business Rules                                       │ │
+│  └────────────────────────────────────────────────────────┘ │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   PostgreSQL Database                        │
+│  - User Table                                                │
+│  - Product Table                                             │
+│  - Other Tables...                                           │
+└─────────────────────────────────────────────────────────────┘
+```
 
-## Next Steps
+## 🚀 Getting Started
 
-To extend the API, consider adding:
+### Prerequisites
 
-- [ ] Order management
-- [ ] Review and rating system
-- [ ] Payment integration
-- [ ] Image upload functionality
-- [ ] Email verification
-- [ ] Password reset functionality
-- [ ] Admin dashboard APIs
-- [ ] Real-time notifications
-- [ ] Booking/reservation system
-- [ ] Report system
+- Node.js (v14 or higher)
+- PostgreSQL (v12 or higher)
+- npm or yarn
 
-## License
+### Installation
 
-MIT
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/johan6337/Renting-Online-Web.git
+   cd Renting-Online-Web/be
+   ```
 
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+   The server will start on `http://localhost:3456`
+
+## 📚 API Documentation
+
+Once the server is running, you can access the interactive API documentation at:
+
+**Swagger UI**: [http://localhost:3456/api-docs](http://localhost:3456/api-docs)
+
+### Quick API Overview
+
+#### Authentication Endpoints
+- `POST /api/users/register` - Register a new user
+- `POST /api/users/login` - Login and get JWT token
+
+#### User Endpoints
+- `GET /api/users` - Get all users (with pagination and filters)
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+
+#### Product Endpoints
+- `GET /api/products` - Get all products (with pagination and filters)
+- `POST /api/products` - Create new product
+- `GET /api/products/:id` - Get product by ID
+- `PUT /api/products/:id` - Update product
+- `DELETE /api/products/:id` - Delete product
+- `GET /api/products/seller/:sellerId` - Get products by seller
+- `GET /api/products/categories/list` - Get all categories
+
+#### System Endpoints
+- `GET /health` - Health check
+
+### Authentication
+
+Most endpoints require JWT authentication. Include the token in the Authorization header:
+
+```bash
+Authorization: Bearer <your_jwt_token>
+```
+
+Example request:
+```bash
+curl -X GET http://localhost:5000/api/users/1 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+## 🔄 Development Workflow
+
+### How to Add a New Feature
+
+Follow this step-by-step workflow when implementing a new feature:
+
+#### 1. **Database Schema**
+   
+   Add tables or columns on database (which is on Supabase)
+
+#### 2. **Model** (`models/`)
+   
+   Create a model file to handle database operations:
+   
+   ```javascript
+   // models/Review.js
+   const sql = require("../db");
+   
+   /**
+    * Get all reviews for a product
+    */
+   async function getReviewsByProduct(productId) {
+     return await sql`
+       SELECT r.*, u.username, u.avatar_url
+       FROM "Review" r
+       LEFT JOIN "User" u ON r.user_id = u.user_id
+       WHERE r.product_id = ${productId}
+       ORDER BY r.created_at DESC
+     `;
+   }
+   
+   /**
+    * Create a new review
+    */
+   async function createReview(reviewData) {
+     const { userId, productId, rating, comment } = reviewData;
+     
+     const newReview = await sql`
+       INSERT INTO "Review" (user_id, product_id, rating, comment)
+       VALUES (${userId}, ${productId}, ${rating}, ${comment})
+       RETURNING *
+     `;
+     
+     return newReview[0];
+   }
+   
+   // Export functions
+   module.exports = {
+     getReviewsByProduct,
+     createReview,
+     // ... other functions
+   };
+   ```
+
+#### 3. **Controller** (`controllers/`)
+   
+   Implement business logic and request handling:
+   
+   ```javascript
+   // controllers/reviewController.js
+   const reviewModel = require('../models/Review');
+   
+   /**
+    * @desc    Create new review
+    * @route   POST /api/reviews
+    * @access  Private
+    */
+   const createReview = async (req, res) => {
+     try {
+       const { userId, productId, rating, comment } = req.body;
+       
+       // Validation
+       if (!userId || !productId || !rating) {
+         return res.status(400).json({
+           success: false,
+           message: 'Please provide all required fields'
+         });
+       }
+       
+       // Create review
+       const review = await reviewModel.createReview({
+         userId,
+         productId,
+         rating,
+         comment
+       });
+       
+       res.status(201).json({
+         success: true,
+         message: 'Review created successfully',
+         data: review
+       });
+     } catch (error) {
+       console.error('Create review error:', error);
+       res.status(500).json({
+         success: false,
+         message: 'Error creating review',
+         error: error.message
+       });
+     }
+   };
+   
+   /**
+    * @desc    Get reviews for a product
+    * @route   GET /api/reviews/product/:productId
+    * @access  Public
+    */
+   const getProductReviews = async (req, res) => {
+     try {
+       const { productId } = req.params;
+       
+       const reviews = await reviewModel.getReviewsByProduct(productId);
+       
+       res.status(200).json({
+         success: true,
+         data: reviews
+       });
+     } catch (error) {
+       console.error('Get reviews error:', error);
+       res.status(500).json({
+         success: false,
+         message: 'Error fetching reviews',
+         error: error.message
+       });
+     }
+   };
+   
+   module.exports = {
+     createReview,
+     getProductReviews,
+     // ... other functions
+   };
+   ```
+
+#### 4. **Routes** (`routes/`)
+   
+   Define API endpoints:
+   
+   ```javascript
+   // routes/reviewRoutes.js
+   const express = require('express');
+   const {
+     createReview,
+     getProductReviews,
+     updateReview,
+     deleteReview
+   } = require('../controllers/reviewController');
+   
+   const router = express.Router();
+   
+   // Review CRUD routes
+   router.post('/', createReview);
+   router.get('/product/:productId', getProductReviews);
+   router.put('/:id', updateReview);
+   router.delete('/:id', deleteReview);
+   
+   module.exports = router;
+   ```
+
+#### 5. **Register Routes** (`index.js`)
+   
+   Add your routes to the main application:
+   
+   ```javascript
+   // index.js
+   const reviewRoutes = require("./routes/reviewRoutes");
+   
+   // ... other code ...
+   
+   // API Routes
+   app.use("/api/reviews", reviewRoutes);
+   ```
+
+#### 6. **Update API Documentation** (`openapi.yaml`)
+   
+   Document your new endpoints:
+   
+   ```yaml
+   /api/reviews:
+     post:
+       summary: Create new review
+       tags: [Reviews]
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - userId
+                 - productId
+                 - rating
+               properties:
+                 userId:
+                   type: integer
+                 productId:
+                   type: integer
+                 rating:
+                   type: integer
+                   minimum: 1
+                   maximum: 5
+                 comment:
+                   type: string
+   ```
+
+#### 7. **Test Your Endpoints**
+   
+   Test using the Swagger UI at `http://localhost:3456/api-docs` or tools like:
+   - Postman
+   - cURL
+   - Thunder Client (VS Code extension)
+   
+   Example cURL test:
+   ```bash
+   curl -X POST http://localhost:3456/api/reviews \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -d '{
+       "userId": 1,
+       "productId": 2,
+       "rating": 5,
+       "comment": "Great product!"
+     }'
+   ```

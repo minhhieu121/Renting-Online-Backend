@@ -1,25 +1,29 @@
-import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
-import { Op } from 'sequelize';
+const userModel = require('../models/User');
+const jwt = require('jsonwebtoken');
 
 // Generate JWT Token
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+    expiresIn: process.env.JWT_EXPIRE || '30d'
   });
+};
+
+// Helper function to remove password from user object
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  const { password, ...userWithoutPassword } = user;
+  return userWithoutPassword;
 };
 
 // @desc    Register new user
 // @route   POST /api/users/register
 // @access  Public
-export const registerUser = async (req, res) => {
+const registerUser = async (req, res) => {
   try {
     const { username, email, password, fullName, phone, role } = req.body;
 
     // Check if user already exists
-    const userExists = await User.findOne({ 
-      where: { email } 
-    });
+    const userExists = await userModel.getUserByEmail(email);
 
     if (userExists) {
       return res.status(400).json({ 
@@ -29,9 +33,7 @@ export const registerUser = async (req, res) => {
     }
 
     // Check username
-    const usernameExists = await User.findOne({ 
-      where: { username } 
-    });
+    const usernameExists = await userModel.getUserByUsername(username);
 
     if (usernameExists) {
       return res.status(400).json({ 
@@ -41,7 +43,7 @@ export const registerUser = async (req, res) => {
     }
 
     // Create user
-    const user = await User.create({
+    const user = await userModel.createUser({
       username,
       email,
       password,
@@ -50,13 +52,13 @@ export const registerUser = async (req, res) => {
       role: role || 'customer'
     });
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.user_id);
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
-        user,
+        user: sanitizeUser(user),
         token
       }
     });
@@ -73,12 +75,12 @@ export const registerUser = async (req, res) => {
 // @desc    Login user
 // @route   POST /api/users/login
 // @access  Public
-export const loginUser = async (req, res) => {
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     // Find user by email
-    const user = await User.findOne({ where: { email } });
+    const user = await userModel.getUserByEmail(email);
 
     if (!user) {
       return res.status(401).json({ 
@@ -96,7 +98,7 @@ export const loginUser = async (req, res) => {
     }
 
     // Check password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await userModel.comparePassword(password, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ 
@@ -106,15 +108,15 @@ export const loginUser = async (req, res) => {
     }
 
     // Update last login
-    await user.update({ lastLoginAt: new Date() });
+    await userModel.updateLastLogin(user.user_id);
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.user_id);
 
     res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
-        user,
+        user: sanitizeUser(user),
         token
       }
     });
@@ -131,35 +133,23 @@ export const loginUser = async (req, res) => {
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Public
-export const getAllUsers = async (req, res) => {
+const getAllUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, role, status, search } = req.query;
     const offset = (page - 1) * limit;
 
-    const where = {};
-    
-    if (role) where.role = role;
-    if (status) where.status = status;
-    if (search) {
-      where[Op.or] = [
-        { username: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { fullName: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
+    const filters = { role, status, search, limit: parseInt(limit), offset: parseInt(offset) };
 
-    const { rows: users, count: total } = await User.findAndCountAll({
-      where,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['created_at', 'DESC']],
-      attributes: { exclude: ['password'] }
-    });
+    const users = await userModel.searchUsers(filters);
+    const total = await userModel.countUsers(filters);
+
+    // Remove password from all users
+    const sanitizedUsers = users.map(sanitizeUser);
 
     res.status(200).json({
       success: true,
       data: {
-        users,
+        users: sanitizedUsers,
         pagination: {
           total,
           page: parseInt(page),
@@ -181,13 +171,11 @@ export const getAllUsers = async (req, res) => {
 // @desc    Get user by ID
 // @route   GET /api/users/:id
 // @access  Public
-export const getUserById = async (req, res) => {
+const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await User.findByPk(id, {
-      attributes: { exclude: ['password'] }
-    });
+    const user = await userModel.getUserById(id);
 
     if (!user) {
       return res.status(404).json({ 
@@ -198,7 +186,7 @@ export const getUserById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: user
+      data: sanitizeUser(user)
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -213,17 +201,18 @@ export const getUserById = async (req, res) => {
 // @desc    Update user
 // @route   PUT /api/users/:id
 // @access  Private
-export const updateUser = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    // Don't allow updating certain fields
-    delete updates.id;
-    delete updates.email;
+    // Don't allow updating certain fields via this endpoint
+    delete updates.user_id;
     delete updates.password;
+    delete updates.created_at;
+    delete updates.updated_at;
 
-    const user = await User.findByPk(id);
+    const user = await userModel.getUserById(id);
 
     if (!user) {
       return res.status(404).json({ 
@@ -232,12 +221,12 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    await user.update(updates);
+    const updatedUser = await userModel.updateUser(id, updates);
 
     res.status(200).json({
       success: true,
       message: 'User updated successfully',
-      data: user
+      data: sanitizeUser(updatedUser)
     });
   } catch (error) {
     console.error('Update user error:', error);
@@ -252,11 +241,11 @@ export const updateUser = async (req, res) => {
 // @desc    Delete user
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
-export const deleteUser = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await User.findByPk(id);
+    const user = await userModel.getUserById(id);
 
     if (!user) {
       return res.status(404).json({ 
@@ -265,7 +254,7 @@ export const deleteUser = async (req, res) => {
       });
     }
 
-    await user.destroy();
+    await userModel.deleteUser(id);
 
     res.status(200).json({
       success: true,
@@ -279,5 +268,14 @@ export const deleteUser = async (req, res) => {
       error: error.message 
     });
   }
+};
+
+module.exports = {
+  registerUser,
+  loginUser,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
 };
 

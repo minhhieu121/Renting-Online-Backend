@@ -1,11 +1,10 @@
 {
   "name": "borrowit-be",
   "version": "1.0.0",
-  "main": "server.js",
-  "type": "module",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node index.js",
+    "dev": "nodemon -r dotenv/config index.js",
     "seed": "node services/seeder.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,17 +20,16 @@
   "homepage": "https://github.com/minhhieu121/Renting-Online-Backend#readme",
   "description": "Backend for BorrowIt - A rental platform",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-validator": "^7.0.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.35.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.1.9",
+    "postgres": "^3.4.5",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
   }
 }

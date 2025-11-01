@@ -1,11 +1,10 @@
-import Product from '../models/Product.js';
-import User from '../models/User.js';
-import { Op } from 'sequelize';
+const productModel = require('../models/Product');
+const userModel = require('../models/User');
 
 // @desc    Create new product
 // @route   POST /api/products
 // @access  Private/Seller
-export const createProduct = async (req, res) => {
+const createProduct = async (req, res) => {
   try {
     const {
       sellerId,
@@ -23,7 +22,7 @@ export const createProduct = async (req, res) => {
     } = req.body;
 
     // Verify seller exists
-    const seller = await User.findByPk(sellerId);
+    const seller = await userModel.getUserById(sellerId);
     if (!seller) {
       return res.status(404).json({
         success: false,
@@ -32,7 +31,7 @@ export const createProduct = async (req, res) => {
     }
 
     // Create product
-    const product = await Product.create({
+    const product = await productModel.createProduct({
       sellerId,
       name,
       description,
@@ -65,7 +64,7 @@ export const createProduct = async (req, res) => {
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Public
-export const getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res) => {
   try {
     const {
       page = 1,
@@ -81,39 +80,22 @@ export const getAllProducts = async (req, res) => {
     } = req.query;
 
     const offset = (page - 1) * limit;
-    const where = {};
 
-    // Filters
-    if (category) where.category = category;
-    if (status) where.status = status;
-    if (location) where.location = { [Op.iLike]: `%${location}%` };
-    
-    if (minPrice || maxPrice) {
-      where.pricePerDay = {};
-      if (minPrice) where.pricePerDay[Op.gte] = parseFloat(minPrice);
-      if (maxPrice) where.pricePerDay[Op.lte] = parseFloat(maxPrice);
-    }
-
-    if (search) {
-      where[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
-
-    const { rows: products, count: total } = await Product.findAndCountAll({
-      where,
+    const filters = {
+      category,
+      status,
+      minPrice,
+      maxPrice,
+      location,
+      search,
+      sortBy,
+      order,
       limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [[sortBy, order]],
-      include: [
-        {
-          model: User,
-          as: 'seller',
-          attributes: ['id', 'username', 'fullName', 'avatar', 'rating', 'totalOrders']
-        }
-      ]
-    });
+      offset: parseInt(offset)
+    };
+
+    const products = await productModel.searchProducts(filters);
+    const total = await productModel.countProducts(filters);
 
     res.status(200).json({
       success: true,
@@ -140,19 +122,11 @@ export const getAllProducts = async (req, res) => {
 // @desc    Get product by ID
 // @route   GET /api/products/:id
 // @access  Public
-export const getProductById = async (req, res) => {
+const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await Product.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'seller',
-          attributes: ['id', 'username', 'fullName', 'avatar', 'rating', 'totalOrders', 'phone', 'email']
-        }
-      ]
-    });
+    const product = await productModel.getProductById(id);
 
     if (!product) {
       return res.status(404).json({
@@ -178,21 +152,21 @@ export const getProductById = async (req, res) => {
 // @desc    Get products by seller
 // @route   GET /api/products/seller/:sellerId
 // @access  Public
-export const getProductsBySeller = async (req, res) => {
+const getProductsBySeller = async (req, res) => {
   try {
     const { sellerId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const where = { sellerId };
-    if (status) where.status = status;
+    const products = await productModel.getProductsBySeller(
+      sellerId,
+      parseInt(limit),
+      parseInt(offset)
+    );
 
-    const { rows: products, count: total } = await Product.findAndCountAll({
-      where,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['created_at', 'DESC']]
-    });
+    // Count total for pagination
+    const filters = { sellerId };
+    const total = await productModel.countProducts(filters);
 
     res.status(200).json({
       success: true,
@@ -219,18 +193,20 @@ export const getProductsBySeller = async (req, res) => {
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private/Seller
-export const updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
     // Don't allow updating certain fields
-    delete updates.id;
-    delete updates.sellerId;
-    delete updates.totalRentals;
-    delete updates.totalReviews;
+    delete updates.product_id;
+    delete updates.seller_id;
+    delete updates.total_rentals;
+    delete updates.total_reviews;
+    delete updates.created_at;
+    delete updates.updated_at;
 
-    const product = await Product.findByPk(id);
+    const product = await productModel.getProductById(id);
 
     if (!product) {
       return res.status(404).json({
@@ -239,12 +215,12 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    await product.update(updates);
+    const updatedProduct = await productModel.updateProduct(id, updates);
 
     res.status(200).json({
       success: true,
       message: 'Product updated successfully',
-      data: product
+      data: updatedProduct
     });
   } catch (error) {
     console.error('Update product error:', error);
@@ -259,11 +235,11 @@ export const updateProduct = async (req, res) => {
 // @desc    Delete product
 // @route   DELETE /api/products/:id
 // @access  Private/Seller
-export const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await Product.findByPk(id);
+    const product = await productModel.getProductById(id);
 
     if (!product) {
       return res.status(404).json({
@@ -272,7 +248,7 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    await product.destroy();
+    await productModel.deleteProduct(id);
 
     res.status(200).json({
       success: true,
@@ -291,7 +267,7 @@ export const deleteProduct = async (req, res) => {
 // @desc    Get product categories
 // @route   GET /api/products/categories/list
 // @access  Public
-export const getCategories = async (req, res) => {
+const getCategories = async (req, res) => {
   try {
     const categories = ['Electronics', 'Clothes', 'Furniture', 'Sports', 'Books', 'Tools', 'Vehicles', 'Other'];
     
@@ -307,5 +283,15 @@ export const getCategories = async (req, res) => {
       error: error.message
     });
   }
+};
+
+module.exports = {
+  createProduct,
+  getAllProducts,
+  getProductById,
+  getProductsBySeller,
+  updateProduct,
+  deleteProduct,
+  getCategories,
 };
 

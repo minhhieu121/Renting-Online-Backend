@@ -1,0 +1,83 @@
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+
+const userRoutes = require("./routes/userRoutes");
+const productRoutes = require("./routes/productRoutes");
+
+// Load OpenAPI specification
+const swaggerDocument = YAML.load("./openapi.yaml");
+
+const PORT = parseInt(process.env.PORT) || 5000;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:5173";
+
+console.log(`Server will run on port: ${PORT}`);
+console.log(`CORS allowed origins: ${ALLOWED_ORIGINS}`);
+
+const app = express();
+
+app.use(
+  cors({
+    origin: ALLOWED_ORIGINS.split(",").map((origin) => origin.trim()),
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.options('*', cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Swagger API Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "BorrowIt API Documentation"
+}));
+
+// API Routes
+app.use("/api/users", userRoutes);
+app.use("/api/products", productRoutes);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+  process.exit(1);
+});
