@@ -10,19 +10,18 @@ const productRoutes = require("./routes/productRoutes");
 // Load OpenAPI specification
 const swaggerDocument = YAML.load("./openapi.yaml");
 
-const PORT = parseInt(process.env.PORT) || 5000;
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:5173";
+const PORT = parseInt(process.env.PORT) || 3456;
 
 console.log(`Server will run on port: ${PORT}`);
-console.log(`CORS allowed origins: ${ALLOWED_ORIGINS}`);
+console.log(`CORS: Allowing all origins`);
 
 const app = express();
 
+// Allow all CORS
 app.use(
   cors({
-    origin: ALLOWED_ORIGINS.split(",").map((origin) => origin.trim()),
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
