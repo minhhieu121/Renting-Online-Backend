@@ -164,7 +164,7 @@ Authorization: Bearer <your_jwt_token>
 
 Example request:
 ```bash
-curl -X GET http://localhost:5000/api/users/1 \
+curl -X GET http://localhost:3456/api/users/1 \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
