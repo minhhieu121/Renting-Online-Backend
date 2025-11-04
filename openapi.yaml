@@ -181,6 +181,71 @@ components:
           type: string
           format: date-time
     
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        currency:
+          type: string
+          example: USD
+        total_amout:
+          type: number
+          format: float
+          example: 300.00
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        order:
+          type: integer
+          example: 1
+        total_quantity:
+          type: integer
+          example: 3
+    
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        cart_id:
+          type: integer
+          example: 1
+        product_id:
+          type: integer
+          example: 2
+        sku:
+          type: string
+          example: "SKU12345"
+        quantity:
+          type: integer
+          example: 1
+        unit_price:
+          type: number
+          format: float
+          example: 50.00
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        total_price:
+          type: number
+          format: float
+          example: 150.00
+        rent_time:
+          type: integer
+          example: 3
+    
     SuccessResponse:
       type: object
       properties:
@@ -956,3 +1021,221 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  
+  # --------------- CART ENDPOINTS ---------------
+  /api/cart/my-cart:
+    post:
+      summary: Get or create user's open cart
+      description: >
+        Retrieves the logged-in user's cart with 'open' status. 
+        If no open cart exists, a new one is created and returned.
+      tags: [Cart]
+      security:
+        - bearerAuth: [] # This route is protected
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: integer
+                  example: 10
+      responses:
+        '200':
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Cart retrieved successfully" }
+                  data:
+                    $ref: '#/components/schemas/Cart'
+        '201':
+          description: New cart created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "New cart created successfully" }
+                  data:
+                    $ref: '#/components/schemas/Cart'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/cart/{cartId}/items:
+    get:
+      summary: Get all items in a cart
+      description: Retrieves a list of all items for a specific cart ID.
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          description: The ID of the cart
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cart items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Cart items retrieved successfully" }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CartItem'
+        '401':
+          description: Unauthorized
+        '404':
+          description: No items found or cart not found
+
+  /api/cart/{cartId}:
+    post:
+      summary: Add an item to a cart
+      description: Adds a new product to the specified cart.
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          description: The ID of the cart to add items to
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - quantity
+                - rentTime
+              properties:
+                productId:
+                  type: integer
+                  example: 10
+                quantity:
+                  type: integer
+                  example: 2
+                rentTime:
+                  type: integer
+                  description: Total rental time in days
+                  example: 3
+      responses:
+        '201':
+          description: Item added to cart successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Item added to cart successfully" }
+                  data:
+                    $ref: '#/components/schemas/CartItem'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '404':
+          description: Product not found
+
+    delete:
+      summary: Delete a specific cart item
+      description: Removes a single item from a cart.
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          description: The ID of the cart
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cartItemId
+              properties:
+                cartItemId:
+                  type: integer
+                  example: 5
+      responses:
+        '200':
+          description: Cart item deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Cart item deleted successfully" }
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+
+  /api/cart/{cartId}/items/{cartItemId}:
+    get:
+      summary: Get a specific cart item
+      description: Retrieves details for a single item within a cart.
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          description: The ID of the cart
+          schema:
+            type: integer
+        - name: cartItemId
+          in: path
+          required: true
+          description: The ID of the cart item
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cart item retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Cart item retrieved successfully" }
+                  data:
+                    $ref: '#/components/schemas/CartItem'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+
+    

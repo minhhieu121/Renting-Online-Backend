@@ -5,7 +5,7 @@ const productModel = require('../models/Product');
 // @desc   Get cart for user
 // @route  GET /api/cart/my-cart
 // @access Private/User
-const getCart = async (req, res) => {
+const getCart = async (req, res, next) => {
     try {
         // 1. Get the ID from the logged-in user, NOT the body
         // const userId = req.user.id; Missing authentication middleware
@@ -84,10 +84,16 @@ const deleteCartItem = async (req, res) => {
     try {
         const { cartId } = req.params;
         const { cartItemId } = req.body;
-        
+        const cartItem = await cartModel.getCartItemById(cartItemId, cartId);
+        if (!cartItem) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart item not found'
+            });
+        }
         //What if the delete twice?
 
-        await cartModel.deleteCartItem(cartItemId, cartId);
+        await cartModel.deleteCartItem(cartItemId, cartId, cartItem);
         res.status(200).json({
             success: true,
             message: 'Cart item deleted successfully'
