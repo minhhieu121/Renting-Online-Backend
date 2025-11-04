@@ -6,6 +6,7 @@ const YAML = require("yamljs");
 
 const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
+const cartRoutes = require("./routes/cartRoutes");
 
 // Load OpenAPI specification
 const swaggerDocument = YAML.load("./openapi.yaml");
@@ -49,6 +50,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
