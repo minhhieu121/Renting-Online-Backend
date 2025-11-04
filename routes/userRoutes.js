@@ -1,7 +1,12 @@
 const express = require('express');
+const { verifySession, verifyRole } = require('../middleware/auth');
 const {
   registerUser,
   loginUser,
+  logoutUser,
+  getCurrentUser,
+  refreshSession,
+  checkSessionStatus,
   getAllUsers,
   getUserById,
   updateUser,
@@ -10,15 +15,21 @@ const {
 
 const router = express.Router();
 
-// Authentication routes
+// Public authentication routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+router.get('/session-status' , checkSessionStatus);
+
+// Protected session routes
+router.post('/logout', verifySession, logoutUser);
+router.get('/me', verifySession, getCurrentUser);  
+router.post('/refresh-session', verifySession, refreshSession);
 
 // User CRUD routes
-router.get('/', getAllUsers);
-router.get('/:id', getUserById);
-router.put('/:id', updateUser);
-router.delete('/:id', deleteUser);
+router.get('/', verifySession, verifyRole(['admin']), getAllUsers);
+router.get('/:id', verifySession, verifyRole(['admin', 'seller', 'customer']), getUserById);
+router.put('/:id', verifySession, verifyRole(['admin', 'seller', 'customer']), updateUser);
+router.delete('/:id', verifySession, verifyRole(['admin']), deleteUser);
 
 module.exports = router;
 

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -23,11 +25,13 @@ app.use(
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // Allow cookies to be sent
   })
 );
 app.options('*', cors());
 
 app.use(express.json());
+app.use(cookieParser()); // Add cookie parser middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

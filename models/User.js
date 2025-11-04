@@ -36,7 +36,8 @@ async function createUser(userData) {
       phone, 
       avatar_url, 
       address, 
-      role
+      role,
+      status
     ) 
     VALUES (
       ${username}, 
@@ -46,7 +47,8 @@ async function createUser(userData) {
       ${phone || null}, 
       ${avatarUrl || null}, 
       ${address || null}, 
-      ${role || 'customer'}
+      ${role || 'customer'},
+      'active'
     ) 
     RETURNING *
   `;

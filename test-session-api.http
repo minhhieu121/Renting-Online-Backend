@@ -1,0 +1,9 @@
+### Variables
+@baseUrl = http://localhost:3456
+@contentType = application/json
+
+ 
+### 2. Check session status after registration
+GET {{baseUrl}}/api/users/session-status
+
+ 
