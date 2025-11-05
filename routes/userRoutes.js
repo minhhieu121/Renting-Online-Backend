@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifySession, verifyRole } = require('../middleware/auth');
+ 
 const {
   registerUser,
   loginUser,
@@ -18,7 +19,6 @@ const router = express.Router();
 // Public authentication routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.get('/session-status' , checkSessionStatus);
 
 // Protected session routes
 router.post('/logout', verifySession, logoutUser);

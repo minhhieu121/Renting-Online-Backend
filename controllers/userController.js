@@ -342,57 +342,6 @@ const refreshSession = async (req, res) => {
   }
 };
 
-// @desc    Check session status
-// @route   GET /api/users/session-status
-// @access  Public
-const checkSessionStatus = (req, res) => {
-  const authToken = req.cookies.authToken;
-  const refreshToken = req.cookies.refreshToken;
-  
-  if (!authToken && !refreshToken) {
-    return res.status(200).json({
-      success: true,
-      sessionActive: false,
-      message: 'No active session'
-    });
-  }
-  
-  try {
-    jwt.verify(authToken, process.env.JWT_SECRET);
-    res.status(200).json({
-      success: true,
-      sessionActive: true,
-      message: 'Active session found'
-    });
-  } catch (error) {
-    // Check refresh token
-    try {
-      if (refreshToken) {
-        jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
-        res.status(200).json({
-          success: true,
-          sessionActive: true,
-          sessionExpired: true,
-          message: 'Session can be refreshed'
-        });
-      } else {
-        res.status(200).json({
-          success: true,
-          sessionActive: false,
-          message: 'Session expired'
-        });
-      }
-    } catch (refreshError) {
-      clearSessionCookies(res);
-      res.status(200).json({
-        success: true,
-        sessionActive: false,
-        message: 'Session expired'
-      });
-    }
-  }
-};
-
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Public
@@ -474,6 +423,7 @@ const updateUser = async (req, res) => {
     delete updates.password;
     delete updates.created_at;
     delete updates.updated_at;
+    delete updates.role; 
 
     const user = await userModel.getUserById(id);
 
@@ -539,7 +489,6 @@ module.exports = {
   logoutUser,
   getCurrentUser,
   refreshSession,
-  checkSessionStatus,
   getAllUsers,
   getUserById,
   updateUser,
