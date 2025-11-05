@@ -126,6 +126,7 @@ const loginUser = async (req, res) => {
 
     // Find user by email
     const user = await userModel.getUserByEmail(email);
+     
     if (!user) {
       return res.status(401).json({ 
         success: false,
