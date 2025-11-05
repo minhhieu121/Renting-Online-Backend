@@ -1,4 +1,5 @@
 const express = require('express');
+const { verifySession } = require('../middleware/auth.js')
 
 const {
     getCart,
@@ -11,10 +12,10 @@ const {
 const router = express.Router();
 
 // Cart routes
-router.post('/my-cart', getCart);
-router.get('/:cartId/items', getCartItems);
-router.get('/:cartId/items/:cartItemId', getCartItemById);
-router.post('/:cartId', addItemToCart);
-router.delete('/:cartId', deleteCartItem);
+router.get('/my-cart', verifySession, getCart);
+router.get('/items', verifySession, getCartItems);
+router.get('/items/:cartItemId', verifySession, getCartItemById);
+router.delete('/items/:cartItemId', verifySession, deleteCartItem);
+router.post('/', verifySession, addItemToCart);
 
 module.exports = router;
