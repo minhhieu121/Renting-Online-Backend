@@ -1639,43 +1639,6 @@ paths:
         '409':
           description: Review already exists for the provided order
 
-  /api/reviews/me:
-    get:
-      summary: List reviews written by the current user
-      tags: [Reviews]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: Reviews retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean, example: true }
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Review'
-                  pagination:
-                    type: object
-                    properties:
-                      page: { type: integer, example: 1 }
-                      limit: { type: integer, example: 10 }
-        '401':
-          description: Unauthorized
 
   /api/reviews/order/{orderNumber}:
     get:

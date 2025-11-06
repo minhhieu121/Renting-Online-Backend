@@ -251,11 +251,25 @@ const updateReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const reviewerId = req.user?.user_id;
+    const satisfactionUpdate = req.body?.satisfaction;
+
+    if (
+      typeof satisfactionUpdate !== "undefined" &&
+      satisfactionUpdate !== null &&
+      satisfactionUpdate !== "" &&
+      !allowedSatisfactionValues.has(satisfactionUpdate)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid satisfaction value",
+      });
+    }
 
     const review = await reviewModel.updateReview(
       reviewId,
       reviewerId,
       {
+        satisfaction: satisfactionUpdate,
         experience: buildExperiencePayload(req.body.experience),
         highlights: req.body.highlights,
         improvements: req.body.improvements,
