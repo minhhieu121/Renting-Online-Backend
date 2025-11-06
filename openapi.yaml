@@ -1550,7 +1550,37 @@ paths:
           description: Unauthorized
         '404':
           description: Not found
-
+    delete:
+      summary: Delete report
+      description: Delete a report (Admin)
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Report deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/reports/status/{status}:
     get:
       summary: Get reports by status

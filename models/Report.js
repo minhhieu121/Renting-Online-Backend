@@ -161,6 +161,18 @@ async function resolveReport(reportId, updatedData) {
   
   return result[0];
 }
+/** 
+ * Delete report
+ */
+async function deleteReport(reportId) {
+  const result = await sql`
+    DELETE FROM "Report" 
+    WHERE report_id = ${reportId}
+    RETURNING *
+  `;
+  
+  return result[0];
+}
 
 module.exports = {
   createReport,
@@ -168,4 +180,5 @@ module.exports = {
   getReportById,
   getReportsByStatus,
   resolveReport,
+  deleteReport
 };
