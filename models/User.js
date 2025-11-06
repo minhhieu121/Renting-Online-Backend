@@ -104,33 +104,37 @@ async function getUserById(userId) {
  * Update user information
  */
 async function updateUser(userId, userData) {
-  const {
-    email,
-    fullName,
-    phone,
-    avatarUrl,
-    address,
-    role,
-    status,
-    emailVerified,
-  } = userData;
+  // Filter out undefined values
+  const updates = {};
+  if (userData.email !== undefined) updates.email = userData.email;
+  if (userData.fullName !== undefined) updates.full_name = userData.fullName;
+  if (userData.phone !== undefined) updates.phone = userData.phone;
+  if (userData.avatarUrl !== undefined) updates.avatar_url = userData.avatarUrl;
+  if (userData.address !== undefined) updates.address = userData.address;
+  if (userData.role !== undefined) updates.role = userData.role;
+  if (userData.status !== undefined) updates.status = userData.status;
+  if (userData.emailVerified !== undefined) updates.email_verified = userData.emailVerified;
 
-  const updatedUser = await sql`
+  // If no fields to update, return current user
+  if (Object.keys(updates).length === 0) {
+    return await getUserById(userId);
+  }
+
+  // Build dynamic SET clause
+  const setClause = Object.keys(updates)
+    .map((key, index) => `${key} = $${index + 2}`)
+    .join(', ');
+
+  const values = [userId, ...Object.values(updates)];
+
+  const result = await sql.unsafe(`
     UPDATE "User"
-    SET 
-      email = COALESCE(${email}, email),
-      full_name = COALESCE(${fullName}, full_name),
-      phone = COALESCE(${phone}, phone),
-      avatar_url = COALESCE(${avatarUrl}, avatar_url),
-      address = COALESCE(${address}, address),
-      role = COALESCE(${role}, role),
-      status = COALESCE(${status}, status),
-      email_verified = COALESCE(${emailVerified}, email_verified)
-    WHERE user_id = ${userId}
+    SET ${setClause}
+    WHERE user_id = $1
     RETURNING *
-  `;
+  `, values);
 
-  return updatedUser[0];
+  return result[0];
 }
 
 /**

@@ -125,10 +125,19 @@ async function updateReview(reviewId, reviewerId, updates) {
     typeof updates.photos === "undefined"
       ? undefined
       : normalizedPhotos?.length || 0;
+  const satisfactionValue =
+    typeof updates.satisfaction === "string" && updates.satisfaction.length > 0
+      ? updates.satisfaction
+      : null;
+  const satisfactionScore = satisfactionValue
+    ? resolveScore(satisfactionValue)
+    : null;
 
   const reviewRows = await sql`
     UPDATE "Review"
     SET
+      satisfaction = COALESCE(${satisfactionValue}, satisfaction),
+      satisfaction_score = COALESCE(${satisfactionValue ? satisfactionScore : null}, satisfaction_score),
       experience = COALESCE(${normalizedExperience ? sql.json(normalizedExperience) : null}, experience),
       highlights = COALESCE(${updates.highlights}, highlights),
       improvements = COALESCE(${updates.improvements}, improvements),
@@ -139,7 +148,13 @@ async function updateReview(reviewId, reviewerId, updates) {
     RETURNING *
   `;
 
-  return reviewRows[0];
+  const updatedReview = reviewRows[0];
+
+  if (updatedReview && satisfactionValue) {
+    await recomputeProductReviewStats(updatedReview.product_id);
+  }
+
+  return updatedReview;
 }
 
 async function getReviewById(reviewId) {
@@ -157,10 +172,13 @@ async function getReviewByOrderNumber(orderNumber, reviewerId) {
   if (!orderNumber) return null;
 
   const reviews = await sql`
-    SELECT *
-    FROM "Review"
-    WHERE order_number = ${orderNumber}
-      ${reviewerId ? sql`AND reviewer_id = ${reviewerId}` : sql``}
+    SELECT
+      r.*,
+      p.name AS product_name
+    FROM "Review" r
+    LEFT JOIN "Product" p ON r.product_id = p.product_id
+    WHERE r.order_number = ${orderNumber}
+      ${reviewerId ? sql`AND r.reviewer_id = ${reviewerId}` : sql``}
     LIMIT 1
   `;
 

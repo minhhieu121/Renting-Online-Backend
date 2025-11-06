@@ -29,11 +29,12 @@ router.get(
   getProductReviews
 );
 
-router.get(
-  '/me',
-  verifySession,
-  getMyReviews
-);
+// Temporarily disabled until frontend consumes this endpoint
+// router.get(
+//   '/me',
+//   verifySession,
+//   getMyReviews
+// );
 
 router.put(
   '/:reviewId',
