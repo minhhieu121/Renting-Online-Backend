@@ -397,10 +397,6 @@ components:
         restriction_duration:
           type: integer
           nullable: true
-        rating_deduction:
-          type: number
-          format: float
-          nullable: true
         action_reason:
           type: string
           nullable: true
@@ -1537,9 +1533,6 @@ paths:
                   type: string
                 restriction_duration:
                   type: integer
-                rating_deduction:
-                  type: number
-                  format: float
                 action_reason:
                   type: string
                 mod_note:
