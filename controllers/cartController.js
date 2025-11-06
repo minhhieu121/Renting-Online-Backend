@@ -8,8 +8,7 @@ const productModel = require('../models/Product');
 const getCart = async (req, res, next) => {
     try {
         // 1. Get the ID from the logged-in user, NOT the body
-        // const userId = req.user.id; Missing authentication middleware
-        const userId = req.body.userId; // Temporary for testing without auth
+        const userId = req.user.user_id;
 
         // 2. Check if the user already has an "open" cart
         let cart = await cartModel.getOpenCartByUserId(userId);
@@ -40,11 +39,18 @@ const getCart = async (req, res, next) => {
 }
 
 // @desc   Add item to cart
-// @route  POST /api/cart/:cartId
+// @route  POST /api/cart/
 // @access Private/User
 const addItemToCart = async (req, res) => {
     try {
-        const { cartId } = req.params;
+        const userId = req.user.user_id;
+        const cart = await cartModel.getOpenCartByUserId(userId);
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            });
+        }
         const { productId, quantity, rentTime } = req.body;
         const product = await productModel.getProductById(productId);
         const productData = {
@@ -60,7 +66,7 @@ const addItemToCart = async (req, res) => {
                 message: 'Product not found'
             });
         }
-        const newItem = await cartModel.addItemToCart(cartId, productData, quantity, rentTime);
+        const newItem = await cartModel.addItemToCart(cart.id, productData, quantity, rentTime);
         res.status(201).json({
             success: true,
             message: 'Item added to cart successfully',
@@ -78,13 +84,20 @@ const addItemToCart = async (req, res) => {
 };
 
 // @desc Delete cart item
-// @route DELETE /api/cart/:cartId
+// @route DELETE /api/cart/items/:cartItemId
 // @access Private/User
 const deleteCartItem = async (req, res) => {
     try {
-        const { cartId } = req.params;
-        const { cartItemId } = req.body;
-        const cartItem = await cartModel.getCartItemById(cartItemId, cartId);
+        const userId = req.user.user_id;
+        const cart = await cartModel.getOpenCartByUserId(userId);
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            });
+        }
+        const { cartItemId } = req.params;
+        const cartItem = await cartModel.getCartItemById(cartItemId, cart.id);
         if (!cartItem) {
             return res.status(404).json({
                 success: false,
@@ -93,7 +106,7 @@ const deleteCartItem = async (req, res) => {
         }
         //What if the delete twice?
 
-        await cartModel.deleteCartItem(cartItemId, cartId, cartItem);
+        await cartModel.deleteCartItem(cartItemId, cart.id, cartItem);
         res.status(200).json({
             success: true,
             message: 'Cart item deleted successfully'
@@ -109,13 +122,20 @@ const deleteCartItem = async (req, res) => {
 }
 
 //@desc Get cart items
-//@route GET /api/cart/:cartId/items
+//@route GET /api/cart/items
 //@Access Private/User
 
 const getCartItems = async (req, res) => {
     try {
-        const { cartId } = req.params;
-        const items = await cartModel.getCartItems(cartId);
+        const userId = req.user.user_id;
+        const cart = await cartModel.getOpenCartByUserId(userId);
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            });
+        }
+        const items = await cartModel.getCartItems(cart.id);
         if (!items) {
             return res.status(404).json({
                 success: false,
@@ -138,13 +158,21 @@ const getCartItems = async (req, res) => {
 }
 
 //@desc Get cart items
-//@route GET /api/cart/:cartId/items/:cartItemId
+//@route GET /api/cart/items/:cartItemId
 //@Access Private/User
 
 const getCartItemById = async (req, res) => {
     try {
-        const { cartId, cartItemId } = req.params;
-        const item = await cartModel.getCartItemById(cartItemId, cartId);
+        const { cartItemId } = req.params;
+        const userId = req.user.user_id;
+        const cart = await cartModel.getOpenCartByUserId(userId);
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            });
+        }
+        const item = await cartModel.getCartItemById(cartItemId, cart.id);
         if (!item) {
             return res.status(404).json({
                 success: false,

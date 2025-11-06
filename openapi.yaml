@@ -26,6 +26,12 @@ tags:
     description: User management and authentication
   - name: Products
     description: Product management and listing
+  - name: Reviews
+    description: Rental feedback and product review endpoints
+  - name: Cart
+    description: Shopping cart management
+  - name: Reports
+    description: User reporting and moderation
 
 components:
   securitySchemes:
@@ -88,6 +94,7 @@ components:
         updated_at:
           type: string
           format: date-time
+
     
     Product:
       type: object
@@ -245,7 +252,164 @@ components:
         rent_time:
           type: integer
           example: 3
-    
+
+    ReviewExperience:
+      type: object
+      properties:
+        fit:
+          type: boolean
+        quality:
+          type: boolean
+        easeOfUse:
+          type: boolean
+        style:
+          type: boolean
+        worthThePrice:
+          type: boolean
+      example:
+        fit: true
+        quality: true
+        easeOfUse: false
+        style: true
+        worthThePrice: true
+
+    Review:
+      type: object
+      properties:
+        review_id:
+          type: integer
+          example: 42
+        reviewer_id:
+          type: integer
+          example: 7
+        product_id:
+          type: integer
+          example: 3
+        order_number:
+          type: string
+          example: ORD-2025-0298
+        satisfaction:
+          type: string
+          enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
+        satisfaction_score:
+          type: number
+          format: float
+          example: 4.5
+        experience:
+          $ref: '#/components/schemas/ReviewExperience'
+        highlights:
+          type: string
+        improvements:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+        photos_count:
+          type: integer
+        submitted_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReviewCreatePayload:
+      type: object
+      required:
+        - productId
+        - satisfaction
+      properties:
+        productId:
+          type: integer
+          example: 3
+        orderNumber:
+          type: string
+          example: ORD-2025-0298
+        satisfaction:
+          type: string
+          enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
+        experience:
+          $ref: '#/components/schemas/ReviewExperience'
+        highlights:
+          type: string
+          maxLength: 2000
+        improvements:
+          type: string
+          maxLength: 2000
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    ReviewStats:
+      type: object
+      properties:
+        totalReviews:
+          type: integer
+          example: 18
+        averageScore:
+          type: number
+          format: float
+          example: 4.3
+        distribution:
+          type: object
+          additionalProperties:
+            type: integer
+
+    Report:
+      type: object
+      properties:
+        report_id:
+          type: integer
+          example: 1
+        reporting_user_id:
+          type: integer
+          example: 2
+        reported_user_id:
+          type: integer
+          example: 3
+        reporting_user_username:
+          type: string
+          example: reporter123
+        reported_user_username:
+          type: string
+          example: reportedUser
+        reason:
+          type: string
+          example: "Inappropriate behavior"
+        reason_extended:
+          type: string
+          example: "Detailed description of the issue..."
+        image:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          type: string
+          enum: [pending, in_review, resolved, dismissed]
+          example: pending
+        action:
+          type: string
+          nullable: true
+        restriction_duration:
+          type: integer
+          nullable: true
+        action_reason:
+          type: string
+          nullable: true
+        mod_note:
+          type: string
+          nullable: true
+        report_date:
+          type: string
+          format: date-time
+        resolve_date:
+          type: string
+          format: date-time
+          nullable: true
     SuccessResponse:
       type: object
       properties:
@@ -401,11 +565,11 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: john@example.com
+                  example: normal@gmail.com
                 password:
                   type: string
                   format: password
-                  example: securePassword123
+                  example: normal
       responses:
         '200':
           description: Login successful
@@ -1024,7 +1188,7 @@ paths:
   
   # --------------- CART ENDPOINTS ---------------
   /api/cart/my-cart:
-    post:
+    get:
       summary: Get or create user's open cart
       description: >
         Retrieves the logged-in user's cart with 'open' status. 
@@ -1032,18 +1196,6 @@ paths:
       tags: [Cart]
       security:
         - bearerAuth: [] # This route is protected
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - userId
-              properties:
-                userId:
-                  type: integer
-                  example: 10
       responses:
         '200':
           description: Cart retrieved successfully
@@ -1074,20 +1226,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/cart/{cartId}/items:
+  /api/cart/items:
     get:
       summary: Get all items in a cart
       description: Retrieves a list of all items for a specific cart ID.
       tags: [Cart]
       security:
         - bearerAuth: []
-      parameters:
-        - name: cartId
-          in: path
-          required: true
-          description: The ID of the cart
-          schema:
-            type: integer
       responses:
         '200':
           description: Cart items retrieved successfully
@@ -1107,20 +1252,13 @@ paths:
         '404':
           description: No items found or cart not found
 
-  /api/cart/{cartId}:
+  /api/cart:
     post:
       summary: Add an item to a cart
       description: Adds a new product to the specified cart.
       tags: [Cart]
       security:
         - bearerAuth: []
-      parameters:
-        - name: cartId
-          in: path
-          required: true
-          description: The ID of the cart to add items to
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
@@ -1134,7 +1272,7 @@ paths:
               properties:
                 productId:
                   type: integer
-                  example: 10
+                  example: 2
                 quantity:
                   type: integer
                   example: 2
@@ -1161,47 +1299,9 @@ paths:
         '404':
           description: Product not found
 
-    delete:
-      summary: Delete a specific cart item
-      description: Removes a single item from a cart.
-      tags: [Cart]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: cartId
-          in: path
-          required: true
-          description: The ID of the cart
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - cartItemId
-              properties:
-                cartItemId:
-                  type: integer
-                  example: 5
-      responses:
-        '200':
-          description: Cart item deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean, example: true }
-                  message: { type: string, example: "Cart item deleted successfully" }
-        '401':
-          description: Unauthorized
-        '404':
-          description: Cart item not found
+    
 
-  /api/cart/{cartId}/items/{cartItemId}:
+  /api/cart/items/{cartItemId}:
     get:
       summary: Get a specific cart item
       description: Retrieves details for a single item within a cart.
@@ -1209,12 +1309,6 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: cartId
-          in: path
-          required: true
-          description: The ID of the cart
-          schema:
-            type: integer
         - name: cartItemId
           in: path
           required: true
@@ -1238,4 +1332,443 @@ paths:
         '404':
           description: Cart item not found
 
-    
+    delete:
+      summary: Delete a specific cart item
+      description: Removes a single item from a cart.
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cartItemId
+          in: path
+          required: true
+          description: The ID of the cart item
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cart item deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Cart item deleted successfully" }
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+
+
+  # --------------- REPORT ENDPOINTS ---------------
+  /api/reports:
+    post:
+      summary: Create new report
+      description: Submit a report about another user
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reporting_user_id
+                - reported_user_id
+                - reason
+              properties:
+                reporting_user_id:
+                  type: integer
+                reported_user_id:
+                  type: integer
+                reporting_user_username:
+                  type: string
+                reported_user_username:
+                  type: string
+                reason:
+                  type: string
+                reason_extended:
+                  type: string
+                image:
+                  type: string
+                  format: uri
+      responses:
+        '201':
+          description: Report created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get all reports
+      description: Retrieve paginated list of reports (Admin)
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_review, resolved, dismissed]
+        - name: reporting_user_id
+          in: query
+          schema:
+            type: integer
+        - name: reported_user_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reports retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      reports:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Report'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/reports/{id}:
+    get:
+      summary: Get report by ID
+      description: Retrieve a specific report (Admin)
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Report found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+    put:
+      summary: Resolve report
+      description: Resolve report & Take actions (Admin)
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, in_review, resolved, dismissed]
+                action:
+                  type: string
+                restriction_duration:
+                  type: integer
+                action_reason:
+                  type: string
+                mod_note:
+                  type: string
+      responses:
+        '200':
+          description: Report updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+  /api/reports/status/{status}:
+    get:
+      summary: Get reports by status
+      description: Retrieve reports filtered by status (Admin)
+      tags: [Reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [pending, in_review, resolved, dismissed]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Reports retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      reports:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Report'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationResponse'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+
+  /api/reviews:
+    post:
+      summary: Submit a product review
+      description: Creates a new review for a completed rental/order.
+      tags: [Reviews]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreatePayload'
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Review created successfully" }
+                  data:
+                    $ref: '#/components/schemas/Review'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '404':
+          description: Product not found
+        '409':
+          description: Review already exists for the provided order
+
+
+  /api/reviews/order/{orderNumber}:
+    get:
+      summary: Get review summary for a specific order
+      tags: [Reviews]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Rental order number used in the frontend
+      responses:
+        '200':
+          description: Review found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    $ref: '#/components/schemas/Review'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Review not found for this order
+
+  /api/reviews/product/{productId}:
+    get:
+      summary: List reviews for a product
+      tags: [Reviews]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: latest
+            enum: [latest, helpful]
+      responses:
+        '200':
+          description: Reviews retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  pagination:
+                    type: object
+                    properties:
+                      total: { type: integer, example: 25 }
+                      page: { type: integer, example: 1 }
+                      limit: { type: integer, example: 10 }
+                      totalPages: { type: integer, example: 3 }
+                  stats:
+                    $ref: '#/components/schemas/ReviewStats'
+        '404':
+          description: Product not found
+
+  /api/reviews/{reviewId}:
+    put:
+      summary: Update an existing review
+      tags: [Reviews]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                experience:
+                  $ref: '#/components/schemas/ReviewExperience'
+                highlights:
+                  type: string
+                improvements:
+                  type: string
+                photos:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+      responses:
+        '200':
+          description: Review updated successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Review not found
+
+    delete:
+      summary: Delete a review (admin only)
+      tags: [Reviews]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Review deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Review not found
+          description: Unauthorized
