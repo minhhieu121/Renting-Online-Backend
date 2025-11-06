@@ -122,23 +122,46 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, identifier } = req.body;
 
-    // Find user by email
-    const user = await userModel.getUserByEmail(email);
+    // Support both old format (email) and new format (identifier)
+    const loginIdentifier = identifier || email;
+
+    if (!loginIdentifier || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email/username and password are required' 
+      });
+    }
+
+    // Find user by email or username
+    let user;
+    
+    // Check if identifier contains @ symbol (likely email)
+    if (loginIdentifier.includes('@')) {
+      user = await userModel.getUserByEmail(loginIdentifier);
+    } else {
+      // Try username first
+      user = await userModel.getUserByUsername(loginIdentifier);
+      
+      // If not found by username, try email (in case user enters email without @)
+      if (!user) {
+        user = await userModel.getUserByEmail(loginIdentifier);
+      }
+    }
      
     if (!user) {
       return res.status(401).json({ 
         success: false,
-        message: 'Invalid email or password' 
+        message: 'Invalid email/username or password' 
       });
     }
 
-    // Check if user is banned
-    if (user.status === 'banned') {
+    // Check if user is suspended
+    if (user.status === 'suspended') {
       return res.status(403).json({ 
         success: false,
-        message: 'Your account has been banned' 
+        message: 'Your account has been suspended' 
       });
     }
 
@@ -148,15 +171,18 @@ const loginUser = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ 
         success: false,
-        message: 'Invalid email or password' 
+        message: 'Invalid email/username or password' 
       });
     }
 
     // Update last login
     await userModel.updateLastLogin(user.user_id);
 
+    // Use fallback role if DB doesn't return one
+    const roleForToken = user.role || 'customer';
+
     // Generate tokens
-    const token = generateToken(user.user_id, user.role);
+    const token = generateToken(user.user_id, roleForToken);
     const refreshToken = generateRefreshToken(user.user_id);
     
     // Set session cookies
@@ -231,11 +257,11 @@ const getCurrentUser = async (req, res) => {
         });
       }
       
-      if (user.status === 'banned') {
+      if (user.status === 'suspended') {
         clearSessionCookies(res);
         return res.status(403).json({
           success: false,
-          message: 'Account has been banned',
+          message: 'Account has been suspended',
           sessionValid: false
         });
       }
@@ -254,7 +280,7 @@ const getCurrentUser = async (req, res) => {
           const refreshDecoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
           const user = await userModel.getUserById(refreshDecoded.id);
           
-          if (user && user.status !== 'banned') {
+          if (user && user.status !== 'suspended') {
             // Generate new tokens
             const newToken = generateToken(user.user_id, user.role);
             const newRefreshToken = generateRefreshToken(user.user_id);
@@ -310,7 +336,7 @@ const refreshSession = async (req, res) => {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
     const user = await userModel.getUserById(decoded.id);
     
-    if (!user || user.status === 'banned') {
+    if (!user || user.status === 'suspended') {
       clearSessionCookies(res);
       return res.status(401).json({
         success: false,
@@ -419,12 +445,35 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
+    console.log('Update request received:', { id, updates }); // Debug log
+
     // Don't allow updating certain fields via this endpoint
     delete updates.user_id;
     delete updates.password;
     delete updates.created_at;
     delete updates.updated_at;
-    delete updates.role; 
+
+    // Validate status if provided
+    if (updates.status) {
+      const validStatuses = ['active', 'suspended', 'pending'];
+      if (!validStatuses.includes(updates.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status value'
+        });
+      }
+    }
+
+    // Validate role if provided
+    if (updates.role) {
+      const validRoles = ['customer', 'seller', 'admin'];
+      if (!validRoles.includes(updates.role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role value'
+        });
+      }
+    }
 
     const user = await userModel.getUserById(id);
 
@@ -435,7 +484,11 @@ const updateUser = async (req, res) => {
       });
     }
 
+    console.log('User found, updating with:', updates); // Debug log
+
     const updatedUser = await userModel.updateUser(id, updates);
+
+    console.log('User updated successfully:', updatedUser); // Debug log
 
     res.status(200).json({
       success: true,

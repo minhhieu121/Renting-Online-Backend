@@ -25,10 +25,10 @@ const verifySession = async (req, res, next) => {
       });
     }
     
-    if (user.status === 'banned') {
+    if (user.status === 'suspended') {
       return res.status(403).json({
         success: false,
-        message: 'Account has been banned.',
+        message: 'Account has been suspended.',
         sessionValid: false
       });
     }

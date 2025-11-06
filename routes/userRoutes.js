@@ -23,6 +23,7 @@ router.post('/login', loginUser);
 // Protected session routes
 router.post('/logout', verifySession, logoutUser);
 router.get('/me', verifySession, getCurrentUser);  
+router.get('/profile', verifySession, getCurrentUser); // Alias for /me
 router.post('/refresh-session', verifySession, refreshSession);
 
 // User CRUD routes
