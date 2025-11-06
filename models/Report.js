@@ -139,7 +139,6 @@ async function resolveReport(reportId, updatedData) {
     status,
     action,
     restriction_duration,
-    rating_deduction,
     action_reason,
     mod_note,
   } = updatedData;
@@ -150,7 +149,6 @@ async function resolveReport(reportId, updatedData) {
       status = COALESCE(${status}, status),
       action = COALESCE(${action}, action),
       restriction_duration = COALESCE(${restriction_duration}, restriction_duration),
-      rating_deduction = COALESCE(${rating_deduction}, rating_deduction),
       action_reason = COALESCE(${action_reason}, action_reason),
       mod_note = COALESCE(${mod_note}, mod_note),
       resolve_date = CASE 
