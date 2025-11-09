@@ -138,7 +138,7 @@ async function resolveReport(reportId, updatedData) {
   const {
     status,
     action,
-    restriction_duration,
+    unsuspend_date,
     action_reason,
     mod_note,
   } = updatedData;
@@ -148,7 +148,7 @@ async function resolveReport(reportId, updatedData) {
     SET 
       status = COALESCE(${status}, status),
       action = COALESCE(${action}, action),
-      restriction_duration = COALESCE(${restriction_duration}, restriction_duration),
+      unsuspend_date = COALESCE(${unsuspend_date}, unsuspend_date),
       action_reason = COALESCE(${action_reason}, action_reason),
       mod_note = COALESCE(${mod_note}, mod_note),
       resolve_date = CASE 

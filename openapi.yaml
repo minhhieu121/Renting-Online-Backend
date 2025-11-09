@@ -394,8 +394,9 @@ components:
         action:
           type: string
           nullable: true
-        restriction_duration:
-          type: integer
+        unsuspend_date:
+          type: string
+          format: date-time
           nullable: true
         action_reason:
           type: string
@@ -1531,8 +1532,10 @@ paths:
                   enum: [pending, in_review, resolved, dismissed]
                 action:
                   type: string
-                restriction_duration:
-                  type: integer
+                unsuspend_date:
+                  type: string
+                  format: date-time
+                  nullable: true
                 action_reason:
                   type: string
                 mod_note:
