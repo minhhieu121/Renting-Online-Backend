@@ -21,6 +21,9 @@ async function createUser(userData) {
     avatarUrl,
     address,
     role,
+    status,
+    verificationToken,
+    tokenExpires,
   } = userData;
 
   // Hash the password
@@ -37,7 +40,9 @@ async function createUser(userData) {
       avatar_url, 
       address, 
       role,
-      status
+      status,
+      verification_token,
+      token_expires
     ) 
     VALUES (
       ${username}, 
@@ -48,7 +53,9 @@ async function createUser(userData) {
       ${avatarUrl || null}, 
       ${address || null}, 
       ${role || 'customer'},
-      'active'
+      ${status || 'pending'},
+      ${verificationToken || null},
+      ${tokenExpires || null}
     ) 
     RETURNING *
   `;
@@ -262,6 +269,52 @@ async function getUserByPhoneNumber(phoneNumber) {
   }
 }
 
+/**
+ * Get user by verification token
+ */
+async function getUserByVerificationToken(token) {
+  const users = await sql`
+    SELECT * FROM "User" 
+    WHERE verification_token = ${token} 
+    AND token_expires > NOW()
+    AND status = 'pending'
+  `;
+  return users[0];
+}
+
+/**
+ * Verify user email
+ */
+async function verifyUserEmail(token) {
+  const result = await sql`
+    UPDATE "User" 
+    SET status = 'active', 
+        verification_token = NULL, 
+        token_expires = NULL,
+        updated_at = NOW()
+    WHERE verification_token = ${token} 
+    AND token_expires > NOW()
+    AND status = 'pending'
+    RETURNING *
+  `;
+  return result[0];
+}
+
+/**
+ * Update user verification token
+ */
+async function updateVerificationToken(userId, token, expires) {
+  const result = await sql`
+    UPDATE "User" 
+    SET verification_token = ${token}, 
+        token_expires = ${expires},
+        updated_at = NOW()
+    WHERE user_id = ${userId}
+    RETURNING *
+  `;
+  return result[0];
+}
+
 module.exports = {
   getAllUsers,
   createUser,
@@ -277,5 +330,49 @@ module.exports = {
   countUsers,
   comparePassword,
   getUserByPhoneNumber,
+  getUserByVerificationToken,
+  verifyUserEmail,
+  updateVerificationToken,
+  /**
+   * Set reset token and expiry for a user
+   */
+  setResetToken: async function(userId, token, expires) {
+    const result = await sql`
+      UPDATE "User"
+      SET reset_token = ${token},
+          reset_expires = ${expires},
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+      RETURNING *
+    `;
+    return result[0];
+  },
+
+  /**
+   * Get user by reset token (only if not expired)
+   */
+  getUserByResetToken: async function(token) {
+    const users = await sql`
+      SELECT * FROM "User"
+      WHERE reset_token = ${token}
+      AND reset_expires::timestamp > NOW()
+    `;
+    return users[0];
+  },
+
+  /**
+   * Clear reset token fields after successful reset
+   */
+  clearResetToken: async function(userId) {
+    const result = await sql`
+      UPDATE "User"
+      SET reset_token = NULL,
+          reset_expires = NULL,
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+      RETURNING *
+    `;
+    return result[0];
+  },
 };
 

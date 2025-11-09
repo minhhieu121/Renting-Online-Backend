@@ -7,11 +7,14 @@ const {
   logoutUser,
   getCurrentUser,
   refreshSession,
-  checkSessionStatus,
   getAllUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
+  verifyEmail,
+  resendVerificationEmail
+  ,forgotPassword
+  ,resetPassword
 } = require('../controllers/userController');
 
 const router = express.Router();
@@ -19,6 +22,11 @@ const router = express.Router();
 // Public authentication routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerificationEmail);
+// Forgot / Reset password
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Protected session routes
 router.post('/logout', verifySession, logoutUser);

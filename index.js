@@ -38,6 +38,9 @@ app.use(cookieParser()); // Add cookie parser middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files from public directory
+app.use(express.static('public'));
+
 // Health check route
 app.get('/health', (req, res) => {
   res.status(200).json({

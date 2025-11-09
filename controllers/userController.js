@@ -1,5 +1,7 @@
 const userModel = require('../models/User');
 const jwt = require('jsonwebtoken');
+const emailService = require('../services/EmailService');
+const crypto = require('crypto');
 
 // Generate JWT Token
 const generateToken = (userId, userRole) => {
@@ -83,15 +85,30 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Create user
+    // Generate verification token
+    const verificationToken = emailService.generateVerificationToken();
+    const tokenExpires = emailService.generateTokenExpiry();
+
+    // Create user with verification token
     const user = await userModel.createUser({
       username,
       email,
       password,
-      role: role || 'customer'
+      role: role || 'customer',
+      status: 'pending',
+      verificationToken,
+      tokenExpires
     });
 
-    // Generate tokens
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(email, verificationToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Continue with registration even if email fails
+    }
+
+    // Generate tokens (for immediate login if needed)
     const token = generateToken(user.user_id, user.role);
     const refreshToken = generateRefreshToken(user.user_id);
     
@@ -100,11 +117,12 @@ const registerUser = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully! Please check your email to verify your account.',
       data: {
         user: sanitizeUser(user),
         token,  
-        sessionCreated: true
+        sessionCreated: true,
+        requiresEmailVerification: true
       }
     });
   } catch (error) {
@@ -162,6 +180,14 @@ const loginUser = async (req, res) => {
       return res.status(403).json({ 
         success: false,
         message: 'Your account has been suspended' 
+      });
+    }
+
+    // Check if user account is pending verification
+    if (user.status === 'pending') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Your account is pending verification. Please verify your email before logging in.' 
       });
     }
 
@@ -445,8 +471,6 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    console.log('Update request received:', { id, updates }); // Debug log
-
     // Don't allow updating certain fields via this endpoint
     delete updates.user_id;
     delete updates.password;
@@ -484,11 +508,7 @@ const updateUser = async (req, res) => {
       });
     }
 
-    console.log('User found, updating with:', updates); // Debug log
-
     const updatedUser = await userModel.updateUser(id, updates);
-
-    console.log('User updated successfully:', updatedUser); // Debug log
 
     res.status(200).json({
       success: true,
@@ -537,6 +557,190 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// @desc    Verify email
+// @route   POST /api/users/verify-email
+// @access  Public
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification token is required'
+      });
+    }
+
+    // Get user by verification token
+    const user = await userModel.getUserByVerificationToken(token);
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token'
+      });
+    }
+
+    // Verify user email
+    const verifiedUser = await userModel.verifyUserEmail(token);
+
+    if (!verifiedUser) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to verify email'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully! You can now login.',
+      data: {
+        user: sanitizeUser(verifiedUser)
+      }
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying email',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Resend verification email
+// @route   POST /api/users/resend-verification
+// @access  Public
+const resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Get user by email
+    const user = await userModel.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.status === 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already verified'
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = emailService.generateVerificationToken();
+    const tokenExpires = emailService.generateTokenExpiry();
+
+    // Update user with new token
+    await userModel.updateVerificationToken(user.user_id, verificationToken, tokenExpires);
+
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(email, verificationToken);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Verification email sent successfully! Please check your email.'
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email'
+      });
+    }
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error resending verification email',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Forgot password - generate reset token and send email
+// @route   POST /api/users/forgot-password
+// @access  Public
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    // Lookup user - we won't reveal if user exists to the client
+    const user = await userModel.getUserByEmail(email);
+
+    // Generate token and expiry (1 hour)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    if (user) {
+      // Persist token
+      await userModel.setResetToken(user.user_id, resetToken, tokenExpires);
+
+      // Send reset email (don't fail the request if email sending fails)
+      try {
+        await emailService.sendPasswordResetEmail(email, resetToken);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+      }
+    }
+
+    // Always respond with success message to avoid account enumeration
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Error processing password reset request', error: error.message });
+  }
+};
+
+// @desc    Reset password using token
+// @route   POST /api/users/reset-password
+// @access  Public
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required' });
+    }
+
+    // Find user by reset token and ensure not expired
+    const user = await userModel.getUserByResetToken(token);
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    // Update password and clear reset token
+    await userModel.updateUserPassword(user.user_id, newPassword);
+    await userModel.clearResetToken(user.user_id);
+
+    res.status(200).json({ success: true, message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Error resetting password', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -547,5 +751,9 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
 };
 

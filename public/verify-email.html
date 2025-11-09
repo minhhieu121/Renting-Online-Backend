@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Renting Online</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .loading {
+            color: #666;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Email Verification</h1>
+        <div id="message" class="loading">Verifying your email...</div>
+        <div id="actions" style="display: none;">
+            <a href="http://localhost:5173" class="btn">Go to Login</a>
+        </div>
+    </div>
+
+    <script>
+        // Get token from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const messageDiv = document.getElementById('message');
+        const actionsDiv = document.getElementById('actions');
+
+        if (!token) {
+            messageDiv.innerHTML = '<div class="error">No verification token found</div>';
+            messageDiv.className = 'error';
+        } else {
+            // Call verification API
+            fetch('http://localhost:3456/api/users/verify-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token: token })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.innerHTML = '<div class="success">✅ Email verified successfully!</div><p>Your account is now active. You can login to your account.</p>';
+                    messageDiv.className = 'success';
+                    actionsDiv.style.display = 'block';
+                } else {
+                    messageDiv.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                    messageDiv.className = 'error';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.innerHTML = '<div class="error">❌ An error occurred while verifying your email</div>';
+                messageDiv.className = 'error';
+            });
+        }
+    </script>
+</body>
+</html>
