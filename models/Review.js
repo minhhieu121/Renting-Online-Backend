@@ -56,7 +56,7 @@ async function createReview(reviewData) {
   const {
     reviewerId,
     productId,
-    orderNumber,
+    orderId,
     satisfaction,
     experience,
     highlights,
@@ -76,7 +76,8 @@ async function createReview(reviewData) {
       INSERT INTO "Review" (
         reviewer_id,
         product_id,
-        order_number,
+        order_id
+  ,
         satisfaction,
         satisfaction_score,
         experience,
@@ -88,7 +89,7 @@ async function createReview(reviewData) {
       VALUES (
         ${reviewerId},
         ${productId},
-        ${orderNumber || null},
+        ${orderId || null},
         ${satisfaction},
         ${satisfactionScore},
         ${tx.json(normalizedExperience)},
@@ -168,8 +169,8 @@ async function getReviewById(reviewId) {
   return reviews[0];
 }
 
-async function getReviewByOrderNumber(orderNumber, reviewerId) {
-  if (!orderNumber) return null;
+async function getReviewByOrderId(orderId, reviewerId) {
+  if (!orderId) return null;
 
   const reviews = await sql`
     SELECT
@@ -177,7 +178,7 @@ async function getReviewByOrderNumber(orderNumber, reviewerId) {
       p.name AS product_name
     FROM "Review" r
     LEFT JOIN "Product" p ON r.product_id = p.product_id
-    WHERE r.order_number = ${orderNumber}
+    WHERE r.order_id = ${orderId}
       ${reviewerId ? sql`AND r.reviewer_id = ${reviewerId}` : sql``}
     LIMIT 1
   `;
@@ -315,7 +316,7 @@ module.exports = {
   createReview,
   updateReview,
   getReviewById,
-  getReviewByOrderNumber,
+  getReviewByOrderId,
   getReviewsByProduct,
   getReviewStatsForProduct,
   getReviewsByUser,

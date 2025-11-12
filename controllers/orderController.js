@@ -1,0 +1,85 @@
+const orderModel = require('../models/Order');
+
+const buildSuccessResponse = (data, extra = {}) => ({
+  success: true,
+  data,
+  ...extra,
+});
+
+const buildErrorResponse = (message, extra = {}) => ({
+  success: false,
+  message,
+  ...extra,
+});
+
+const getOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.listOrdersForUser(req.user);
+    return res.status(200).json(
+      buildSuccessResponse(orders, {
+        count: orders.length,
+      })
+    );
+  } catch (error) {
+    console.error('Get orders error:', error);
+    return res.status(500).json(
+      buildErrorResponse('Unable to load orders right now.', {
+        error: error.message,
+      })
+    );
+  }
+};
+
+const getOrderByNumber = async (req, res) => {
+  const { orderNumber } = req.params;
+
+  if (!orderNumber) {
+    return res.status(400).json(
+      buildErrorResponse('orderNumber is required.')
+    );
+  }
+
+  try {
+    const order = await orderModel.getOrderByNumber(orderNumber, req.user);
+
+    if (!order) {
+      return res.status(404).json(
+        buildErrorResponse(`Order ${orderNumber} not found or inaccessible.`)
+      );
+    }
+
+    return res.status(200).json(buildSuccessResponse(order));
+  } catch (error) {
+    console.error('Get order detail error:', error);
+    return res.status(500).json(
+      buildErrorResponse('Unable to load order details right now.', {
+        error: error.message,
+      })
+    );
+  }
+};
+
+const createOrder = async (req, res) => {
+  try {
+    const order = await orderModel.createOrder(req.user, req.body || {});
+    return res.status(201).json(buildSuccessResponse(order));
+  } catch (error) {
+    console.error('Create order error:', error);
+    const status = error.status && Number.isInteger(error.status) ? error.status : 500;
+    const message =
+      status === 400 || status === 401
+        ? error.message
+        : 'Unable to create order right now.';
+    return res.status(status).json(
+      buildErrorResponse(message, {
+        error: error.message,
+      })
+    );
+  }
+};
+
+module.exports = {
+  getOrders,
+  getOrderByNumber,
+  createOrder,
+};

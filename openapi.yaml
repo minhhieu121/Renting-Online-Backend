@@ -32,6 +32,8 @@ tags:
     description: Shopping cart management
   - name: Reports
     description: User reporting and moderation
+  - name: Orders
+    description: Rental order history and detail retrieval
 
 components:
   securitySchemes:
@@ -253,6 +255,196 @@ components:
           type: integer
           example: 3
 
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          example: PRD-005
+        name:
+          type: string
+          example: "Designer Coat"
+        size:
+          type: string
+          example: Large
+        color:
+          type: string
+          example: Grey
+        rentalPeriod:
+          type: string
+          example: "5 days"
+        quantity:
+          type: integer
+          example: 1
+        price:
+          type: number
+          format: float
+          example: 300
+        imageUrl:
+          type: string
+          format: uri
+          example: https://images.example.com/item.jpg
+
+    OrderTimelineEvent:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Order Placed
+        date:
+          type: string
+          example: "September 16, 2025 - 11:00 AM"
+        completed:
+          type: boolean
+          example: true
+        description:
+          type: string
+          example: "Your order has been confirmed and payment received."
+
+    ShippingAddress:
+      type: object
+      properties:
+        name: { type: string, example: "John Doe" }
+        address: { type: string, example: "123 Fashion Street" }
+        city: { type: string, example: "New York" }
+        state: { type: string, example: "NY" }
+        zipCode: { type: string, example: "10001" }
+        phone: { type: string, example: "+1 (555) 123-4567" }
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        orderId:
+          type: string
+          example: ORD-25-2
+        customerId:
+          type: integer
+          example: 5
+        sellerId:
+          type: integer
+          example: 2
+        sellerName:
+          type: string
+          example: "Premium Fashion"
+        buyerName:
+          type: string
+          example: "John Doe"
+        status:
+          type: string
+          example: Ordered
+        placedDate:
+          type: string
+          example: "September 16, 2025"
+        subtotal:
+          type: number
+          format: float
+          example: 300
+        tax:
+          type: number
+          format: float
+          example: 24
+        totalAmount:
+          type: number
+          format: float
+          example: 324
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderTimelineEvent'
+        shippingAddress:
+          $ref: '#/components/schemas/ShippingAddress'
+        receivingInfo:
+          type: object
+          description: Optional receiving schedule selected by customer.
+        returnInfo:
+          type: object
+          description: Optional return schedule selected by customer.
+        notes:
+          type: string
+          example: "Leave with concierge if not home"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - productId
+        - totalAmount
+      properties:
+        productId:
+          type: string
+          example: PRD-005
+        productName:
+          type: string
+          example: "Designer Coat"
+        sellerId:
+          type: integer
+          example: 12
+        sellerName:
+          type: string
+          example: "Premium Fashion"
+        quantity:
+          type: integer
+          example: 1
+        rentalPeriod:
+          type: string
+          example: "5 days"
+        status:
+          type: string
+          example: ordered
+        placedAt:
+          type: string
+          format: date-time
+        unitPrice:
+          type: number
+          format: float
+          example: 300
+        subtotal:
+          type: number
+          format: float
+          example: 300
+        tax:
+          type: number
+          format: float
+          example: 24
+        totalAmount:
+          type: number
+          format: float
+          example: 324
+        imageUrl:
+          type: string
+          format: uri
+        shippingAddress:
+          $ref: '#/components/schemas/ShippingAddress'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderTimelineEvent'
+        receivingInfo:
+          type: object
+          description: Optional receiving details supplied by the renter.
+        returnInfo:
+          type: object
+          description: Optional return schedule supplied by the renter.
+        notes:
+          type: string
+        items:
+          description: Optional custom items array; defaults to a single item built from the payload.
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
     ReviewExperience:
       type: object
       properties:
@@ -285,9 +477,9 @@ components:
         product_id:
           type: integer
           example: 3
-        order_number:
+        order_id:
           type: string
-          example: ORD-2025-0298
+          example: ORD-25-1
         satisfaction:
           type: string
           enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
@@ -324,9 +516,9 @@ components:
         productId:
           type: integer
           example: 3
-        orderNumber:
+        orderId:
           type: string
-          example: ORD-2025-0298
+          example: ORD-25-2
         satisfaction:
           type: string
           enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
@@ -1362,6 +1554,96 @@ paths:
           description: Cart item not found
 
 
+  # --------------- ORDER ENDPOINTS ---------------
+  /api/orders:
+    post:
+      summary: Create a new order for a single product
+      description: Accepts a cart item payload and creates a dedicated order.
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '400':
+          description: Validation error (e.g., missing productId or totals)
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+
+    get:
+      summary: List the authenticated user's orders
+      description: Returns all rental orders associated with the current session.
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  count: { type: integer, example: 3 }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+
+  /api/orders/{orderNumber}:
+    get:
+      summary: Get detail for a specific order
+      description: Retrieves one order by its public order number.
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Rental order number (e.g., ORD-25-1)
+      responses:
+        '200':
+          description: Order found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Order not found
+        '500':
+          description: Server error
+
+
   # --------------- REPORT ENDPOINTS ---------------
   /api/reports:
     post:
@@ -1666,14 +1948,14 @@ paths:
           description: Review already exists for the provided order
 
 
-  /api/reviews/order/{orderNumber}:
+  /api/reviews/order/{orderId}:
     get:
       summary: Get review summary for a specific order
       tags: [Reviews]
       security:
         - bearerAuth: []
       parameters:
-        - name: orderNumber
+        - name: orderId
           in: path
           required: true
           schema:

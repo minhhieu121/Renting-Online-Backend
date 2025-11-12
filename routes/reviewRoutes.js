@@ -19,8 +19,8 @@ router.post(
 );
 
 router.get(
-  '/order/:orderNumber',
-  // verifySession,
+  '/order/:orderId',
+  verifySession,
   // logReviewOrderRequest,
   getReviewSummaryByOrder
 );

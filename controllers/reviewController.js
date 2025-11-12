@@ -88,9 +88,9 @@ const createReview = async (req, res) => {
       });
     }
 
-    if (payload.orderNumber) {
-      const existing = await reviewModel.getReviewByOrderNumber(
-        payload.orderNumber,
+    if (payload.orderId) {
+      const existing = await reviewModel.getReviewByorderId(
+        payload.orderId,
         reviewerId
       );
       if (existing) {
@@ -105,7 +105,7 @@ const createReview = async (req, res) => {
     const review = await reviewModel.createReview({
       reviewerId,
       productId: payload.productId,
-      orderNumber: payload.orderNumber,
+      orderId: payload.orderId,
       satisfaction: payload.satisfaction,
       experience: buildExperiencePayload(payload.experience, {
         fallbackToDefaults: true,
@@ -134,11 +134,11 @@ const createReview = async (req, res) => {
 
 const getReviewSummaryByOrder = async (req, res) => {
   try {
-    const { orderNumber } = req.params;
+    const { orderId } = req.params;
     const reviewerId = req.user?.user_id;
 
-    const review = await reviewModel.getReviewByOrderNumber(
-      orderNumber,
+    const review = await reviewModel.getReviewByorderId(
+      orderId,
       reviewerId
     );
 
