@@ -41,7 +41,10 @@ const getReportById = async (req, res) => {
   try {
     const id = req.params.id;
     const report = await Report.getReportById(id);
-    if (!report) return res.status(404).json({ success: false, error: "Report not found" });
+    if (!report)
+      return res
+        .status(404)
+        .json({ success: false, error: "Report not found" });
     return res.status(200).json({ success: true, data: report });
   } catch (err) {
     console.error(err);
@@ -73,7 +76,10 @@ const resolveReport = async (req, res) => {
     const id = req.params.id;
     const updatedData = req.body;
     const updated = await Report.resolveReport(id, updatedData);
-    if (!updated) return res.status(404).json({ success: false, error: "Report not found" });
+    if (!updated)
+      return res
+        .status(404)
+        .json({ success: false, error: "Report not found" });
     return res.status(200).json({ success: true, data: updated });
   } catch (err) {
     console.error(err);
@@ -88,7 +94,10 @@ const deleteReport = async (req, res) => {
   try {
     const id = req.params.id;
     const deleted = await Report.deleteReport(id);
-    if (!deleted) return res.status(404).json({ success: false, error: "Report not found" });
+    if (!deleted)
+      return res
+        .status(404)
+        .json({ success: false, error: "Report not found" });
     return res.status(200).json({ success: true, data: deleted });
   } catch (err) {
     console.error(err);
