@@ -89,7 +89,7 @@ const createReview = async (req, res) => {
     }
 
     if (payload.orderId) {
-      const existing = await reviewModel.getReviewByorderId(
+      const existing = await reviewModel.getReviewByOrderId(
         payload.orderId,
         reviewerId
       );
@@ -137,7 +137,7 @@ const getReviewSummaryByOrder = async (req, res) => {
     const { orderId } = req.params;
     const reviewerId = req.user?.user_id;
 
-    const review = await reviewModel.getReviewByorderId(
+    const review = await reviewModel.getReviewByOrderId(
       orderId,
       reviewerId
     );

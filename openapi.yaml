@@ -254,37 +254,6 @@ components:
         rent_time:
           type: integer
           example: 3
-
-    OrderItem:
-      type: object
-      properties:
-        productId:
-          type: string
-          example: PRD-005
-        name:
-          type: string
-          example: "Designer Coat"
-        size:
-          type: string
-          example: Large
-        color:
-          type: string
-          example: Grey
-        rentalPeriod:
-          type: string
-          example: "5 days"
-        quantity:
-          type: integer
-          example: 1
-        price:
-          type: number
-          format: float
-          example: 300
-        imageUrl:
-          type: string
-          format: uri
-          example: https://images.example.com/item.jpg
-
     OrderTimelineEvent:
       type: object
       properties:
@@ -316,32 +285,55 @@ components:
       properties:
         id:
           type: integer
-          example: 12
+          example: 2
         orderId:
           type: string
-          example: ORD-25-2
+          example: 2
+        orderNumber:
+          type: string
+          example: ORD-3002
         customerId:
           type: integer
-          example: 5
-        sellerId:
-          type: integer
           example: 2
-        sellerName:
-          type: string
-          example: "Premium Fashion"
         buyerName:
           type: string
           example: "John Doe"
+        productId:
+          type: integer
+          example: 2
+        productName:
+          type: string
+          example: "Skinny Jeans"
+        productImage:
+          type: string
+          format: uri
+          example: https://example.com/jeans.jpg
+        productSize:
+          type: string
+          example: "L"
+        productColor:
+          type: string
+          example: "Blue"
+        rentalPeriod:
+          type: string
+          example: "7 days"
+        quantity:
+          type: integer
+          example: 1
+        unitPrice:
+          type: number
+          format: float
+          example: 240.0
         status:
           type: string
-          example: Ordered
+          example: "Shipping"
         placedDate:
           type: string
-          example: "September 16, 2025"
+          example: "2025-07-08T00:00:00Z"
         subtotal:
           type: number
           format: float
-          example: 300
+          example: 240
         tax:
           type: number
           format: float
@@ -349,11 +341,7 @@ components:
         totalAmount:
           type: number
           format: float
-          example: 324
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/OrderItem'
+          example: 264
         timeline:
           type: array
           items:
@@ -368,7 +356,6 @@ components:
           description: Optional return schedule selected by customer.
         notes:
           type: string
-          example: "Leave with concierge if not home"
         createdAt:
           type: string
           format: date-time
@@ -383,21 +370,67 @@ components:
         - totalAmount
       properties:
         productId:
-          type: string
-          example: PRD-005
+          type: integer
+          example: 3
         productName:
           type: string
           example: "Designer Coat"
-        sellerId:
-          type: integer
-          example: 12
-        sellerName:
+        productImage:
           type: string
-          example: "Premium Fashion"
+          format: uri
+          example: https://example.com/coat.jpg
+        productSize:
+          type: string
+          example: "XL"
+        productColor:
+          type: string
+          example: "Grey"
+        rentalPeriod:
+          type: string
+          example: "5 days"
         quantity:
           type: integer
           example: 1
-        rentalPeriod:
+        unitPrice:
+          type: number
+          format: float
+          example: 300
+        buyerName:
+          type: string
+          example: "John Doe"
+        status:
+          type: string
+          example: "ordered"
+        placedAt:
+          type: string
+          format: date-time
+          example: "2025-09-16T11:00:00Z"
+        subtotal:
+          type: number
+          format: float
+          example: 300
+        tax:
+          type: number
+          format: float
+          example: 24
+        totalAmount:
+          type: number
+          format: float
+          example: 324
+        shippingAddress:
+          $ref: '#/components/schemas/ShippingAddress'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderTimelineEvent'
+        receivingInfo:
+          type: object
+          description: Optional receiving schedule supplied by the renter.
+        returnInfo:
+          type: object
+          description: Optional return schedule supplied by the renter.
+        notes:
+          type: string
           type: string
           example: "5 days"
         status:
@@ -439,11 +472,6 @@ components:
           description: Optional return schedule supplied by the renter.
         notes:
           type: string
-        items:
-          description: Optional custom items array; defaults to a single item built from the payload.
-          type: array
-          items:
-            $ref: '#/components/schemas/OrderItem'
 
     ReviewExperience:
       type: object
@@ -479,7 +507,7 @@ components:
           example: 3
         order_id:
           type: string
-          example: ORD-25-1
+          example: 2
         satisfaction:
           type: string
           enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
@@ -518,7 +546,7 @@ components:
           example: 3
         orderId:
           type: string
-          example: ORD-25-2
+          example: 3
         satisfaction:
           type: string
           enum: [loved-it, liked-it, it-was-okay, not-great, terrible]
@@ -2087,3 +2115,4 @@ paths:
         '404':
           description: Review not found
           description: Unauthorized
+

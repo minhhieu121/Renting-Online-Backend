@@ -1,10 +1,4 @@
 const sql = require('../db');
-const sampleOrders = require('../data/ordersData');
-
-const deepClone = (value) => JSON.parse(JSON.stringify(value ?? null));
-
-const normalizeOrderNumber = (orderNumber) =>
-  typeof orderNumber === 'string' ? orderNumber.trim().toUpperCase() : '';
 
 const toOrderIdentifier = (value) => {
   if (typeof value === 'number') {
@@ -16,35 +10,6 @@ const toOrderIdentifier = (value) => {
   return null;
 };
 
-const resolveOrderIdentifier = (source) => {
-  if (!source) return null;
-  return (
-    toOrderIdentifier(source.orderId) ??
-    toOrderIdentifier(source.order_id) ??
-    toOrderIdentifier(source.orderNumber) ??
-    toOrderIdentifier(source.order_number) ??
-    toOrderIdentifier(source.id) ??
-    null
-  );
-};
-
-const enhanceOrder = (order, user) => {
-  if (!order) {
-    return null;
-  }
-
-  const cloned = deepClone(order);
-  cloned.customerId = cloned.customerId || user?.user_id || null;
-  const resolvedId = resolveOrderIdentifier(cloned);
-  if (resolvedId) {
-    cloned.orderId = resolvedId;
-    if (!cloned.orderNumber) {
-      cloned.orderNumber = resolvedId;
-    }
-  }
-  return cloned;
-};
-
 const safeNumber = (value, fallback = 0) => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -54,41 +19,20 @@ const safeNumber = (value, fallback = 0) => {
 };
 
 const generateOrderNumber = () => {
-  const random = Math.floor(100000 + Math.random() * 900000); // 6‑digit
+  const random = Math.floor(100000 + Math.random() * 900000);
   return `ORD-${random}`;
 };
 
-const normalizeOrderItem = (item = {}) => ({
-  productId: item.productId ?? item.product_id ?? item.id ?? null,
-  name: item.productName ?? item.name ?? 'Item',
-  size: item.size ?? null,
-  color: item.color ?? null,
-  rentalPeriod: item.rentalPeriod ?? item.rentTime ?? null,
-  quantity: item.quantity && item.quantity > 0 ? item.quantity : 1,
-  price: safeNumber(item.price ?? item.unitPrice ?? item.unit_price ?? item.total ?? 0),
-  imageUrl: item.imageUrl ?? item.image_url ?? item.image ?? null,
+const normalizeProductPayload = (payload = {}) => ({
+  productId: payload.productId ?? payload.product_id ?? null,
+  productName: payload.productName ?? payload.name ?? 'Item',
+  productImage: payload.productImage ?? payload.imageUrl ?? payload.image ?? null,
+  productSize: payload.productSize ?? payload.size ?? null,
+  productColor: payload.productColor ?? payload.color ?? null,
+  rentalPeriod: payload.rentalPeriod ?? payload.rentTime ?? null,
+  quantity: payload.quantity && payload.quantity > 0 ? payload.quantity : 1,
+  unitPrice: safeNumber(payload.unitPrice ?? payload.price ?? payload.total ?? 0),
 });
-
-const normalizeOrderItems = (payload = {}) => {
-  if (Array.isArray(payload.items) && payload.items.length > 0) {
-    return payload.items.map(normalizeOrderItem);
-  }
-  return [normalizeOrderItem(payload)];
-};
-
-const listOrdersFromSample = (user) => {
-  const cloned = deepClone(sampleOrders) || [];
-  return cloned.map((order) => enhanceOrder(order, user)).filter(Boolean);
-};
-
-const getOrderFromSample = (orderId, user) => {
-  const normalizedTarget = normalizeOrderNumber(orderId);
-  const target = sampleOrders.find((order) => {
-    const current = resolveOrderIdentifier(order);
-    return normalizeOrderNumber(current) === normalizedTarget;
-  });
-  return enhanceOrder(target, user);
-};
 
 const mapOrderRow = (row) => {
   if (!row) {
@@ -98,20 +42,37 @@ const mapOrderRow = (row) => {
   const dbOrderNumber = toOrderIdentifier(row.order_number);
   const resolvedOrderId = dbOrderNumber || toOrderIdentifier(row.order_id) || null;
   const displayOrderNumber = dbOrderNumber || resolvedOrderId;
+  const unitPrice = safeNumber(row.unit_price ?? row.subtotal ?? 0);
+  const productItem = {
+    productId: row.product_id,
+    name: row.product_name,
+    size: row.product_size,
+    color: row.product_color,
+    rentalPeriod: row.rental_period,
+    quantity: row.quantity,
+    price: unitPrice,
+    imageUrl: row.product_image,
+  };
 
   return {
     id: row.order_id,
     orderId: resolvedOrderId,
     orderNumber: displayOrderNumber,
     customerId: row.customer_id,
-    sellerId: row.seller_id,
-    sellerName: row.seller_name,
+    buyerName: row.buyer_name,
+    productId: row.product_id,
+    productName: row.product_name,
+    productImage: row.product_image,
+    productSize: row.product_size,
+    productColor: row.product_color,
+    rentalPeriod: row.rental_period,
+    quantity: row.quantity,
+    unitPrice,
     status: row.status,
     placedDate: row.placed_at ? row.placed_at.toISOString() : null,
     subtotal: Number(row.subtotal ?? 0),
     tax: Number(row.tax ?? 0),
     totalAmount: Number(row.total_amount ?? 0),
-    items: Array.isArray(row.items) ? row.items : [],
     timeline: Array.isArray(row.timeline) ? row.timeline : [],
     receivingInfo: row.receiving_info || null,
     returnInfo: row.return_info || null,
@@ -134,15 +95,10 @@ async function listOrdersForUser(user) {
       ORDER BY placed_at DESC NULLS LAST, created_at DESC
     `;
 
-    if (rows.length === 0) {
-      return listOrdersFromSample(user);
-    }
-
-    const orders = rows.map(mapOrderRow).filter(Boolean);
-    return orders;
+    return rows.map(mapOrderRow).filter(Boolean);
   } catch (error) {
-    console.warn('listOrdersForUser fallback to sample data:', error.message);
-    return listOrdersFromSample(user);
+    console.error('listOrdersForUser error:', error);
+    throw error;
   }
 }
 
@@ -160,14 +116,10 @@ async function getOrderByNumber(orderNumber, user) {
       LIMIT 1
     `;
 
-    if (!row) {
-      return getOrderFromSample(orderNumber, user);
-    }
-
-    return mapOrderRow(row);
+    return row ? mapOrderRow(row) : null;
   } catch (error) {
-    console.warn('getOrderByNumber fallback to sample data:', error.message);
-    return getOrderFromSample(orderNumber, user);
+    console.error('getOrderByNumber error:', error);
+    throw error;
   }
 }
 
@@ -196,9 +148,9 @@ async function createOrder(user, payload = {}) {
     throw error;
   }
 
-  const items = normalizeOrderItems(payload).filter((item) => item.productId);
+  const product = normalizeProductPayload(payload);
 
-  if (items.length === 0) {
+  if (!product.productId) {
     const error = new Error('productId is required to create an order.');
     error.status = 400;
     throw error;
@@ -209,7 +161,7 @@ async function createOrder(user, payload = {}) {
   const subtotal =
     payload.subtotal !== undefined
       ? safeNumber(payload.subtotal)
-      : items.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
+      : product.unitPrice * (product.quantity || 1);
   const tax = safeNumber(payload.tax);
   const totalAmount =
     payload.totalAmount !== undefined
@@ -228,15 +180,21 @@ async function createOrder(user, payload = {}) {
     INSERT INTO "Order" (
       order_number,
       customer_id,
-      seller_id,
-      seller_name,
+      buyer_name,
+      product_id,
+      product_name,
+      product_image,
+      product_size,
+      product_color,
+      rental_period,
+      quantity,
+      unit_price,
       status,
       placed_at,
       subtotal,
       tax,
       total_amount,
       shipping_address,
-      items,
       timeline,
       receiving_info,
       return_info,
@@ -244,15 +202,21 @@ async function createOrder(user, payload = {}) {
     ) VALUES (
       ${orderNumber},
       ${user.user_id},
-      ${payload.sellerId || null},
-      ${payload.sellerName || null},
+      ${payload.buyerName || user.full_name || user.username || null},
+      ${product.productId},
+      ${product.productName},
+      ${product.productImage},
+      ${product.productSize},
+      ${product.productColor},
+      ${product.rentalPeriod},
+      ${product.quantity},
+      ${product.unitPrice},
       ${status},
       ${placedAt},
       ${subtotal},
       ${tax},
       ${totalAmount},
       ${shippingAddress ? sql.json(shippingAddress) : null},
-      ${sql.json(items)},
       ${sql.json(timeline)},
       ${receivingInfo ? sql.json(receivingInfo) : null},
       ${returnInfo ? sql.json(returnInfo) : null},
