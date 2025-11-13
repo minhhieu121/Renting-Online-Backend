@@ -57,7 +57,8 @@ const addItemToCart = async (req, res) => {
             productId: product.product_id,
             name: product.name,
             unit_price: product.price_per_day,
-            sale_percent: product.sale_percentage
+            sale_percent: product.sale_percentage,
+            images: product.images
         }
 
         if (!product) {
@@ -157,6 +158,36 @@ const getCartItems = async (req, res) => {
     }
 }
 
+//@desc Update cart items
+//@route POST /api/cart/items/
+//@Access Private/User
+const updateCartItems = async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+        const cart = await cartModel.getOpenCartByUserId(userId);
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            });
+        }
+        const { newList } = req.body;
+        const updatedItems = await cartModel.updateCartItems(cart.id, newList);
+        res.status(200).json({
+            success: true,
+            message: 'Cart items updated successfully',
+            data: updatedItems
+        });
+    } catch (error) {
+        console.error('Update cart items error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating cart items',
+            error: error.message
+        });
+    } 
+}
+
 //@desc Get cart items
 //@route GET /api/cart/items/:cartItemId
 //@Access Private/User
@@ -195,10 +226,13 @@ const getCartItemById = async (req, res) => {
 }
 
 
+
+
 module.exports = {
     getCart,
     addItemToCart,
     deleteCartItem,
     getCartItems,
-    getCartItemById
+    getCartItemById,
+    updateCartItems
 };
