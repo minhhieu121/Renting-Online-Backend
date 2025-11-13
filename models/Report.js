@@ -23,6 +23,7 @@ async function createReport(reportData) {
       reason, 
       reason_extended, 
       image,
+      report_date,
       status
     )
     VALUES (
@@ -33,6 +34,7 @@ async function createReport(reportData) {
       ${reason},
       ${reason_extended},
       ${image || null},
+      CURRENT_TIMESTAMP,
       'pending'
     )
     RETURNING *
@@ -151,10 +153,7 @@ async function resolveReport(reportId, updatedData) {
       unsuspend_date = COALESCE(${unsuspend_date}, unsuspend_date),
       action_reason = COALESCE(${action_reason}, action_reason),
       mod_note = COALESCE(${mod_note}, mod_note),
-      resolve_date = CASE 
-        WHEN COALESCE(${status}, status) IN ('resolved', 'dismissed') THEN CURRENT_TIMESTAMP 
-        ELSE resolve_date 
-      END
+      resolve_date = CURRENT_TIMESTAMP
     WHERE report_id = ${reportId}
     RETURNING *
   `;

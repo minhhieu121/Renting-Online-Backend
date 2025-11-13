@@ -26,7 +26,7 @@ const app = express();
 // Allow all CORS
 app.use(
   cors({
-    origin: "*",
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent

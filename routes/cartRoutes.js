@@ -6,7 +6,8 @@ const {
     addItemToCart,
     deleteCartItem,
     getCartItems,
-    getCartItemById
+    getCartItemById,
+    updateCartItems
 } = require('../controllers/cartController');
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 // Cart routes
 router.get('/my-cart', verifySession, getCart);
 router.get('/items', verifySession, getCartItems);
+router.put('/items', verifySession, updateCartItems);
 router.get('/items/:cartItemId', verifySession, getCartItemById);
 router.delete('/items/:cartItemId', verifySession, deleteCartItem);
 router.post('/', verifySession, addItemToCart);
