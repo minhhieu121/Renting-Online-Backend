@@ -78,8 +78,55 @@ const createOrder = async (req, res) => {
   }
 };
 
+const getSellerOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.listOrdersForSeller(req.user);
+    return res.status(200).json(
+      buildSuccessResponse(orders, {
+        count: orders.length,
+      })
+    );
+  } catch (error) {
+    console.error('Get seller orders error:', error);
+    return res.status(500).json(
+      buildErrorResponse('Unable to load seller orders right now.', {
+        error: error.message,
+      })
+    );
+  }
+};
+
+const updateOrderStatus = async (req, res) => {
+  const { orderNumber } = req.params;
+
+  if (!orderNumber) {
+    return res.status(400).json(buildErrorResponse('orderNumber is required.'));
+  }
+
+  try {
+    const order = await orderModel.updateOrderStatus(req.user, orderNumber, req.body || {});
+
+    if (!order) {
+      return res.status(404).json(
+        buildErrorResponse('Order not found or you do not have permission to update it.')
+      );
+    }
+
+    return res.status(200).json(buildSuccessResponse(order));
+  } catch (error) {
+    console.error('Update order status error:', error);
+    return res.status(500).json(
+      buildErrorResponse('Unable to update order status right now.', {
+        error: error.message,
+      })
+    );
+  }
+};
+
 module.exports = {
   getOrders,
   getOrderByNumber,
   createOrder,
+  getSellerOrders,
+  updateOrderStatus,
 };

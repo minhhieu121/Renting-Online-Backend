@@ -1,5 +1,6 @@
 const reviewModel = require("../models/Review");
 const productModel = require("../models/Product");
+const orderModel = require("../models/Order");
 
 const EXPERIENCE_FIELDS = [
   "fit",
@@ -88,9 +89,27 @@ const createReview = async (req, res) => {
       });
     }
 
-    if (payload.orderId) {
+    let orderIdentifier = payload.orderId ? Number(payload.orderId) : null;
+
+    if (!orderIdentifier && payload.orderNumber) {
+      const orderDetail = await orderModel.getOrderByNumber(
+        payload.orderNumber,
+        req.user
+      );
+
+      if (!orderDetail) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found or inaccessible",
+        });
+      }
+
+      orderIdentifier = orderDetail.id;
+    }
+
+    if (orderIdentifier) {
       const existing = await reviewModel.getReviewByOrderId(
-        payload.orderId,
+        orderIdentifier,
         reviewerId
       );
       if (existing) {
@@ -100,12 +119,25 @@ const createReview = async (req, res) => {
           data: existing,
         });
       }
+
+      const canReview = await orderModel.isOrderReviewable({
+        orderId: orderIdentifier,
+        orderNumber: payload.orderNumber,
+        customerId: reviewerId,
+      });
+
+      if (!canReview) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only review completed orders.",
+        });
+      }
     }
 
     const review = await reviewModel.createReview({
       reviewerId,
       productId: payload.productId,
-      orderId: payload.orderId,
+      orderId: orderIdentifier,
       satisfaction: payload.satisfaction,
       experience: buildExperiencePayload(payload.experience, {
         fallbackToDefaults: true,
