@@ -5,6 +5,7 @@ const {
   getOrderByNumber,
   createOrder,
   getSellerOrders,
+  getSellerOrderByNumber,
   updateOrderStatus,
 } = require('../controllers/orderController');
 
@@ -15,6 +16,7 @@ router.use(verifySession);
 router.post('/', createOrder);
 router.get('/', getOrders);
 router.get('/seller', verifyRole(['seller']), getSellerOrders);
+router.get('/seller/:orderNumber', verifyRole(['seller']), getSellerOrderByNumber);
 router.patch('/:orderNumber/status', verifyRole(['seller']), updateOrderStatus);
 router.get('/:orderNumber', getOrderByNumber);
 

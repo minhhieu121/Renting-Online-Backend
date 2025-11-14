@@ -534,9 +534,12 @@ async function updateOrderStatus(seller, orderNumber, updates = {}) {
 
   setFragments.push(sql`updated_at = NOW()`);
 
+  const buildSetClause = (fragments) =>
+    fragments.slice(1).reduce((acc, fragment) => sql`${acc}, ${fragment}`, fragments[0]);
+
   const result = await sql`
     UPDATE "Order"
-    SET ${sql.join(setFragments, sql`, `)}
+    SET ${buildSetClause(setFragments)}
     WHERE order_number = ${orderNumber}
       AND seller_id = ${seller.user_id}
     RETURNING order_number
