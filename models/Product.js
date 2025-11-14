@@ -100,18 +100,18 @@ async function getProductById(productId) {
  */
 async function updateProduct(productId, productData) {
   const {
-    name,
-    description,
-    category,
-    pricePerDay,
-    salePercentage,
-    images,
-    location,
-    status,
-    condition,
-    minRentalDays,
-    maxRentalDays,
-    deposit,
+    name = null,
+    description = null,
+    category = null,
+    pricePerDay = null,
+    salePercentage = null,
+    images = null,
+    location = null,
+    status = null,
+    condition = null,
+    minRentalDays = null,
+    maxRentalDays = null,
+    deposit = null,
   } = productData;
 
   const updatedProduct = await sql`
