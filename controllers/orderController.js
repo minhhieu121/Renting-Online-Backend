@@ -96,6 +96,35 @@ const getSellerOrders = async (req, res) => {
   }
 };
 
+const getSellerOrderByNumber = async (req, res) => {
+  const { orderNumber } = req.params;
+
+  if (!orderNumber) {
+    return res.status(400).json(
+      buildErrorResponse('orderNumber is required.')
+    );
+  }
+
+  try {
+    const order = await orderModel.getOrderByNumber(orderNumber, req.user);
+
+    if (!order || Number(order.sellerId) !== Number(req.user.user_id)) {
+      return res.status(404).json(
+        buildErrorResponse(`Order ${orderNumber} not found or inaccessible.`)
+      );
+    }
+
+    return res.status(200).json(buildSuccessResponse(order));
+  } catch (error) {
+    console.error('Get seller order detail error:', error);
+    return res.status(500).json(
+      buildErrorResponse('Unable to load seller order details right now.', {
+        error: error.message,
+      })
+    );
+  }
+};
+
 const updateOrderStatus = async (req, res) => {
   const { orderNumber } = req.params;
 
@@ -128,5 +157,6 @@ module.exports = {
   getOrderByNumber,
   createOrder,
   getSellerOrders,
+  getSellerOrderByNumber,
   updateOrderStatus,
 };
