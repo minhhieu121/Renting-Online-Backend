@@ -20,6 +20,7 @@
   "homepage": "https://github.com/minhhieu121/Renting-Online-Backend#readme",
   "description": "Backend for BorrowIt - A rental platform",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.931.0",
     "@google-cloud/local-auth": "^2.1.0",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
@@ -29,6 +30,8 @@
     "express-validator": "^7.2.1",
     "googleapis": "^105.0.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.9",
     "postgres": "^3.4.5",

@@ -169,21 +169,43 @@ async function getReviewById(reviewId) {
   return reviews[0];
 }
 
-async function getReviewByOrderId(orderId, reviewerId) {
-  if (!orderId) return null;
+async function getReviewByOrderId(orderIdOrNumber, reviewerId) {
+  if (!orderIdOrNumber) return null;
 
-  const reviews = await sql`
-    SELECT
-      r.*,
-      p.name AS product_name
-    FROM "Review" r
-    LEFT JOIN "Product" p ON r.product_id = p.product_id
-    WHERE r.order_id = ${orderId}
-      ${reviewerId ? sql`AND r.reviewer_id = ${reviewerId}` : sql``}
-    LIMIT 1
-  `;
-
-  return reviews[0];
+  // Check if it's an order_number (string) or order_id (number)
+  const isOrderNumber = isNaN(parseInt(orderIdOrNumber)) || orderIdOrNumber.toString().includes('ORD');
+  
+  if (isOrderNumber) {
+    // Query by order_number from the Order table
+    const reviews = await sql`
+      SELECT
+        r.*,
+        p.name AS product_name,
+        o.order_number
+      FROM "Review" r
+      LEFT JOIN "Product" p ON r.product_id = p.product_id
+      LEFT JOIN "Order" o ON r.order_id = o.order_id
+      WHERE o.order_number = ${orderIdOrNumber}
+        ${reviewerId ? sql`AND r.reviewer_id = ${reviewerId}` : sql``}
+      LIMIT 1
+    `;
+    return reviews[0];
+  } else {
+    // Query by order_id
+    const reviews = await sql`
+      SELECT
+        r.*,
+        p.name AS product_name,
+        o.order_number
+      FROM "Review" r
+      LEFT JOIN "Product" p ON r.product_id = p.product_id
+      LEFT JOIN "Order" o ON r.order_id = o.order_id
+      WHERE r.order_id = ${orderIdOrNumber}
+        ${reviewerId ? sql`AND r.reviewer_id = ${reviewerId}` : sql``}
+      LIMIT 1
+    `;
+    return reviews[0];
+  }
 }
 
 async function getReviewsByProduct(productId, options = {}) {

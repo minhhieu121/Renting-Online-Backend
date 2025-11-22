@@ -35,9 +35,6 @@ async function createProduct(productData) {
     images,
     location,
     condition,
-    minRentalDays,
-    maxRentalDays,
-    deposit,
   } = productData;
 
   const newProduct = await sql`
@@ -50,10 +47,7 @@ async function createProduct(productData) {
       sale_percentage,
       images,
       location,
-      condition,
-      min_rental_days,
-      max_rental_days,
-      deposit
+      condition
     ) 
     VALUES (
       ${sellerId},
@@ -64,10 +58,7 @@ async function createProduct(productData) {
       ${salePercentage || 0},
       ${images || []},
       ${location},
-      ${condition || 'good'},
-      ${minRentalDays || 1},
-      ${maxRentalDays || 30},
-      ${deposit || 0}
+      ${condition || 'good'}
     ) 
     RETURNING *
   `;
@@ -109,9 +100,6 @@ async function updateProduct(productId, productData) {
     location = null,
     status = null,
     condition = null,
-    minRentalDays = null,
-    maxRentalDays = null,
-    deposit = null,
   } = productData;
 
   const updatedProduct = await sql`
@@ -125,10 +113,7 @@ async function updateProduct(productId, productData) {
       images = COALESCE(${images}, images),
       location = COALESCE(${location}, location),
       status = COALESCE(${status}, status),
-      condition = COALESCE(${condition}, condition),
-      min_rental_days = COALESCE(${minRentalDays}, min_rental_days),
-      max_rental_days = COALESCE(${maxRentalDays}, max_rental_days),
-      deposit = COALESCE(${deposit}, deposit)
+      condition = COALESCE(${condition}, condition)
     WHERE product_id = ${productId}
     RETURNING *
   `;
@@ -158,6 +143,8 @@ async function searchProducts(filters) {
     maxPrice,
     location,
     search,
+    condition,
+    rating,
     sortBy = 'created_at',
     order = 'DESC',
     limit = 10,
@@ -173,6 +160,10 @@ async function searchProducts(filters) {
 
   if (status) {
     conditions.push(`p.status = '${status}'`);
+  }
+
+  if (condition) {
+    conditions.push(`p.condition = '${condition}'`);
   }
 
   if (minPrice) {
@@ -192,6 +183,13 @@ async function searchProducts(filters) {
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  // Handle rating filter in HAVING clause since it's an aggregated column
+  let havingClause = '';
+  if (rating) {
+    havingClause = `HAVING (SELECT get_product_avg_rating(p.product_id)) >= ${parseFloat(rating)}`;
+  }
+
   const orderClause = `ORDER BY p.${sortBy} ${order}`;
   const limitClause = `LIMIT ${limit} OFFSET ${offset}`;
 
@@ -208,6 +206,7 @@ async function searchProducts(filters) {
     FROM "Product" p
     LEFT JOIN "User" u ON p.seller_id = u.user_id
     ${whereClause}
+    ${havingClause}
     ${orderClause}
     ${limitClause}
   `;
@@ -226,40 +225,56 @@ async function countProducts(filters) {
     maxPrice,
     location,
     search,
+    condition,
+    rating,
   } = filters;
 
   let conditions = [];
 
   if (category) {
-    conditions.push(`category = '${category}'`);
+    conditions.push(`p.category = '${category}'`);
   }
 
   if (status) {
-    conditions.push(`status = '${status}'`);
+    conditions.push(`p.status = '${status}'`);
+  }
+
+  if (condition) {
+    conditions.push(`p.condition = '${condition}'`);
   }
 
   if (minPrice) {
-    conditions.push(`price_per_day >= ${parseFloat(minPrice)}`);
+    conditions.push(`p.price_per_day >= ${parseFloat(minPrice)}`);
   }
 
   if (maxPrice) {
-    conditions.push(`price_per_day <= ${parseFloat(maxPrice)}`);
+    conditions.push(`p.price_per_day <= ${parseFloat(maxPrice)}`);
   }
 
   if (location) {
-    conditions.push(`location ILIKE '%${location}%'`);
+    conditions.push(`p.location ILIKE '%${location}%'`);
   }
 
   if (search) {
-    conditions.push(`(name ILIKE '%${search}%' OR description ILIKE '%${search}%')`);
+    conditions.push(`(p.name ILIKE '%${search}%' OR p.description ILIKE '%${search}%')`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  // Handle rating filter
+  let havingClause = '';
+  if (rating) {
+    havingClause = `HAVING (SELECT get_product_avg_rating(p.product_id)) >= ${parseFloat(rating)}`;
+  }
 
   const query = `
     SELECT COUNT(*) as count 
-    FROM "Product"
-    ${whereClause}
+    FROM (
+      SELECT p.product_id
+      FROM "Product" p
+      ${whereClause}
+      ${havingClause}
+    ) as filtered_products
   `;
 
   const result = await sql.unsafe(query);

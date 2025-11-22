@@ -557,20 +557,35 @@ async function isOrderReviewable({ orderId, orderNumber, customerId }) {
     return false;
   }
 
-  const conditions = [sql`customer_id = ${customerId}`];
-  if (orderId) {
-    conditions.push(sql`order_id = ${orderId}`);
-  }
-  if (orderNumber) {
-    conditions.push(sql`order_number = ${orderNumber}`);
+  let query;
+  if (orderId && orderNumber) {
+    query = sql`
+      SELECT status
+      FROM "Order"
+      WHERE customer_id = ${customerId}
+        AND order_id = ${orderId}
+        AND order_number = ${orderNumber}
+      LIMIT 1
+    `;
+  } else if (orderId) {
+    query = sql`
+      SELECT status
+      FROM "Order"
+      WHERE customer_id = ${customerId}
+        AND order_id = ${orderId}
+      LIMIT 1
+    `;
+  } else {
+    query = sql`
+      SELECT status
+      FROM "Order"
+      WHERE customer_id = ${customerId}
+        AND order_number = ${orderNumber}
+      LIMIT 1
+    `;
   }
 
-  const [row] = await sql`
-    SELECT status
-    FROM "Order"
-    WHERE ${sql.join(conditions, sql` AND `)}
-    LIMIT 1
-  `;
+  const [row] = await query;
 
   if (!row || !row.status) {
     return false;

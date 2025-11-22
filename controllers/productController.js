@@ -16,9 +16,6 @@ const createProduct = async (req, res) => {
       images,
       location,
       condition,
-      minRentalDays,
-      maxRentalDays,
-      deposit
     } = req.body;
 
     // Verify seller exists
@@ -41,9 +38,6 @@ const createProduct = async (req, res) => {
       images,
       location,
       condition,
-      minRentalDays,
-      maxRentalDays,
-      deposit
     });
 
     res.status(201).json({
@@ -75,6 +69,8 @@ const getAllProducts = async (req, res) => {
       maxPrice,
       location,
       search,
+      condition,
+      rating,
       sortBy = 'created_at',
       order = 'DESC'
     } = req.query;
@@ -88,6 +84,8 @@ const getAllProducts = async (req, res) => {
       maxPrice,
       location,
       search,
+      condition,
+      rating,
       sortBy,
       order,
       limit: parseInt(limit),

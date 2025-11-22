@@ -12,6 +12,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 // Load OpenAPI specification
 const swaggerDocument = YAML.load("./openapi.yaml");
@@ -26,7 +27,7 @@ const app = express();
 // Allow all CORS
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: true, // Allow all origins
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // Allow cookies to be sent
@@ -64,6 +65,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
