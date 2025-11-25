@@ -41,6 +41,10 @@ const ORDER_BASE_SELECT = sql`
     o.receiving_info,
     o.return_info,
     o.notes,
+    (SELECT r.review_id FROM "Review" r WHERE r.order_id = o.order_id LIMIT 1) AS review_id,
+    (SELECT r.created_at FROM "Review" r WHERE r.order_id = o.order_id LIMIT 1) AS review_created_at,
+    (SELECT r.updated_at FROM "Review" r WHERE r.order_id = o.order_id LIMIT 1) AS review_updated_at,
+    EXISTS (SELECT 1 FROM "Review" r WHERE r.order_id = o.order_id) AS has_review,
     o.created_at,
     o.updated_at,
     customer.full_name AS customer_full_name,
@@ -211,7 +215,7 @@ const mapOrderRow = (row) => {
   }
 
   const dbOrderNumber = toOrderIdentifier(row.order_number);
-  const resolvedOrderId = dbOrderNumber || toOrderIdentifier(row.order_id) || null;
+  const resolvedOrderId = toOrderIdentifier(row.order_id) || null;
   const displayOrderNumber = dbOrderNumber || resolvedOrderId;
   const unitPrice = safeNumber(row.unit_price ?? row.subtotal ?? 0);
   const productImages = Array.isArray(row.product_images)
@@ -257,7 +261,15 @@ const mapOrderRow = (row) => {
   };
 
   const statusValue = row.status || 'ordered';
-  const canReview = typeof statusValue === 'string' && statusValue.toLowerCase() === 'completed';
+  const hasReview =
+    Boolean(row.has_review) ||
+    Boolean(row.review_id) ||
+    Boolean(row.review_created_at) ||
+    Boolean(row.review_updated_at);
+  const canReview =
+    typeof statusValue === 'string' &&
+    statusValue.toLowerCase() === 'completed' &&
+    !hasReview;
 
   return {
     id: row.order_id,
@@ -295,6 +307,10 @@ const mapOrderRow = (row) => {
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
     canReview,
+    hasReview,
+    reviewId: row.review_id || null,
+    reviewCreatedAt: row.review_created_at || null,
+    reviewUpdatedAt: row.review_updated_at || null,
     seller,
     product,
   };

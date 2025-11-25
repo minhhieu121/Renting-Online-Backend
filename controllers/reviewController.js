@@ -46,6 +46,10 @@ const ensurePhotosPayload = (photos, { fallbackToEmpty = false } = {}) => {
 const validateCreatePayload = (payload = {}) => {
   const errors = [];
 
+  if (!payload.orderId && !payload.orderNumber) {
+    errors.push("orderId or orderNumber is required.");
+  }
+
   if (!payload.productId) {
     errors.push("productId is required.");
   }
@@ -86,6 +90,13 @@ const createReview = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Product not found",
+      });
+    }
+
+    if (payload.orderId && Number.isNaN(Number(payload.orderId))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid orderId",
       });
     }
 
@@ -132,6 +143,11 @@ const createReview = async (req, res) => {
           message: "You can only review completed orders.",
         });
       }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Order reference is required to submit a review.",
+      });
     }
 
     const review = await reviewModel.createReview({

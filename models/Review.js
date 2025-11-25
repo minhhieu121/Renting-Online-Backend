@@ -76,15 +76,15 @@ async function createReview(reviewData) {
       INSERT INTO "Review" (
         reviewer_id,
         product_id,
-        order_id
-  ,
+        order_id,
         satisfaction,
         satisfaction_score,
         experience,
         highlights,
         improvements,
         photos,
-        photos_count
+        photos_count,
+        submitted_at
       )
       VALUES (
         ${reviewerId},
@@ -96,7 +96,8 @@ async function createReview(reviewData) {
         ${highlights || null},
         ${improvements || null},
         ${tx.json(normalizedPhotos)},
-        ${photosCount}
+        ${photosCount},
+        NOW()
       )
       RETURNING *
     `;
