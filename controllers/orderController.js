@@ -1,4 +1,5 @@
 const orderModel = require('../models/Order');
+const emailService = require('../services/EmailService');
 
 const buildSuccessResponse = (data, extra = {}) => ({
   success: true,
@@ -62,6 +63,21 @@ const getOrderByNumber = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     const order = await orderModel.createOrder(req.user, req.body || {});
+
+    // Fire-and-forget: try sending order email (do not block response)
+    try {
+      const userEmail = req.user?.email;
+      if (userEmail) {
+        emailService
+          .sendOrderEmail(userEmail, order)
+          .catch((err) => console.error('Order email send failure:', err));
+      } else {
+        console.warn('Order email skipped: user email not available');
+      }
+    } catch (mailErr) {
+      console.error('Order email unexpected error:', mailErr);
+    }
+
     return res.status(201).json(buildSuccessResponse(order));
   } catch (error) {
     console.error('Create order error:', error);

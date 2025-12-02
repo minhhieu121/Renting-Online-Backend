@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order Details</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; color: #333; }
+    .container { max-width: 960px; margin: 32px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .header { padding: 20px 24px; border-bottom: 1px solid #eee; }
+    .header h1 { margin: 0; font-size: 22px; }
+    .content { padding: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .card { border: 1px solid #eee; border-radius: 8px; padding: 16px; }
+    .card h2 { margin-top: 0; font-size: 18px; }
+    .list { list-style: none; padding: 0; margin: 0; }
+    .list li { margin: 8px 0; }
+    .label { font-weight: 600; }
+    .badge { display: inline-block; background: #4CAF50; color: #fff; border-radius: 12px; padding: 4px 10px; font-size: 12px; }
+    .error { background: #ffecec; color: #c00; padding: 12px 16px; border: 1px solid #fcc; border-radius: 6px; }
+    .image { width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+    .timeline { list-style: none; padding: 0; }
+    .timeline li { margin: 6px 0; }
+    .pending { color: #888; }
+    .completed { color: #2e7d32; }
+    .muted { color: #666; font-size: 12px; }
+    .actions { margin-top: 16px; }
+    .btn { display: inline-block; background: #1976d2; color: #fff; text-decoration: none; padding: 10px 14px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="title">Order Details</h1>
+      <div id="statusBadge" class="badge" style="display:none"></div>
+    </div>
+    <div class="content" id="content">
+      <div id="error" class="error" style="display:none"></div>
+      <div id="loading">Loading order...</div>
+      <div id="details" style="display:none">
+        <div class="grid">
+          <div class="card">
+            <h2>Order</h2>
+            <ul class="list">
+              <li><span class="label">Order Number:</span> <span id="orderNumber"></span></li>
+              <li><span class="label">Placed Date:</span> <span id="placedDate"></span></li>
+              <li><span class="label">Quantity:</span> <span id="quantity"></span></li>
+              <li><span class="label">Unit Price:</span> <span id="unitPrice"></span></li>
+              <li><span class="label">Subtotal:</span> <span id="subtotal"></span></li>
+              <li><span class="label">Tax:</span> <span id="tax"></span></li>
+              <li><span class="label">Total:</span> <span id="totalAmount"></span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Product</h2>
+            <img id="productImage" class="image" alt="Product image" />
+            <ul class="list">
+              <li><span class="label">Name:</span> <span id="productName"></span></li>
+              <li><span class="label">Product ID:</span> <span id="productId"></span></li>
+              <li><span class="label">Category:</span> <span id="productCategory"></span></li>
+              <li><span class="label">Location:</span> <span id="productLocation"></span></li>
+              <li><span class="label">Price/Day:</span> <span id="pricePerDay"></span></li>
+              <li><span class="label">Sale %:</span> <span id="salePercentage"></span></li>
+              <li><span class="label">Size:</span> <span id="productSize"></span></li>
+              <li><span class="label">Color:</span> <span id="productColor"></span></li>
+              <li><span class="label">Condition:</span> <span id="productCondition"></span></li>
+              <li><span class="label">Status:</span> <span id="productStatus"></span></li>
+              <li><span class="label">Rating:</span> <span id="productRating"></span></li>
+              <li><span class="label">Description:</span> <span id="productDescription"></span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:24px;">
+          <div class="card">
+            <h2>Seller</h2>
+            <ul class="list">
+              <li><span class="label">Name:</span> <span id="sellerName"></span></li>
+              <li><span class="label">Username:</span> <span id="sellerUsername"></span></li>
+              <li><span class="label">Email:</span> <span id="sellerEmail"></span></li>
+              <li><span class="label">Phone:</span> <span id="sellerPhone"></span></li>
+              <li><span class="label">Address:</span> <span id="sellerAddress"></span></li>
+              <li><span class="label">Rating:</span> <span id="sellerRating"></span></li>
+              <li><span class="label">Total Orders:</span> <span id="sellerTotalOrders"></span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Shipping & Timeline</h2>
+            <div><span class="label">Shipping Address:</span> <span id="shippingAddress"></span></div>
+            <h3 style="margin-top:12px">Timeline</h3>
+            <ul id="timeline" class="timeline"></ul>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a id="backBtn" class="btn" href="#">Back to Home</a>
+          <span id="reviewHint" class="muted"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function fmtMoney(n){
+      const num = Number(n);
+      if (!isFinite(num)) return String(n);
+      return new Intl.NumberFormat(undefined, { style:'currency', currency:'USD' }).format(num);
+    }
+    function fmtDate(iso){
+      if (!iso) return '-';
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
+    }
+
+    const orderNumber = location.pathname.split('/').filter(Boolean).pop();
+    const titleEl = document.getElementById('title');
+    const statusBadge = document.getElementById('statusBadge');
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const detailsEl = document.getElementById('details');
+
+    titleEl.textContent = `Order ${orderNumber}`;
+
+    fetch(`/api/orders/${orderNumber}`, { credentials: 'include' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({ success:false, message:'Invalid response' }));
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || `Failed to load order ${orderNumber}`);
+        }
+        return data.data; // order object
+      })
+      .then((order) => {
+        loadingEl.style.display = 'none';
+        detailsEl.style.display = 'block';
+        statusBadge.style.display = 'inline-block';
+        statusBadge.textContent = order.status;
+
+        // Order basics
+        document.getElementById('orderNumber').textContent = order.orderNumber || order.orderId || '-';
+        document.getElementById('placedDate').textContent = fmtDate(order.placedDate);
+        document.getElementById('quantity').textContent = order.quantity;
+        document.getElementById('unitPrice').textContent = fmtMoney(order.unitPrice);
+        document.getElementById('subtotal').textContent = fmtMoney(order.subtotal);
+        document.getElementById('tax').textContent = fmtMoney(order.tax);
+        document.getElementById('totalAmount').textContent = fmtMoney(order.totalAmount);
+
+        // Product
+        document.getElementById('productImage').src = order.productImage || (order.product && order.product.image) || '';
+        document.getElementById('productName').textContent = order.productName || (order.product && order.product.name) || '-';
+        document.getElementById('productId').textContent = order.productId;
+        document.getElementById('productCategory').textContent = order.productCategory || (order.product && order.product.category) || '-';
+        document.getElementById('productLocation').textContent = (order.product && order.product.location) || order.productLocation || '-';
+        document.getElementById('pricePerDay').textContent = fmtMoney((order.product && order.product.pricePerDay) || order.unitPrice);
+        document.getElementById('salePercentage').textContent = (order.product && order.product.salePercentage) ?? '-';
+        document.getElementById('productSize').textContent = order.productSize || '-';
+        document.getElementById('productColor').textContent = order.productColor || '-';
+        document.getElementById('productCondition').textContent = (order.product && order.product.condition) || '-';
+        document.getElementById('productStatus').textContent = (order.product && order.product.status) || '-';
+        document.getElementById('productRating').textContent = (order.product && order.product.averageRating) ?? '-';
+        document.getElementById('productDescription').textContent = (order.product && order.product.description) || '-';
+
+        // Seller
+        document.getElementById('sellerName').textContent = order.sellerName || (order.seller && order.seller.name) || '-';
+        document.getElementById('sellerUsername').textContent = order.sellerUsername || (order.seller && order.seller.username) || '-';
+        document.getElementById('sellerEmail').textContent = order.sellerEmail || (order.seller && order.seller.email) || '-';
+        document.getElementById('sellerPhone').textContent = order.sellerPhone || (order.seller && order.seller.phone) || '-';
+        document.getElementById('sellerAddress').textContent = order.sellerAddress || (order.seller && order.seller.address) || '-';
+        document.getElementById('sellerRating').textContent = (order.seller && order.seller.rating) ?? '-';
+        document.getElementById('sellerTotalOrders').textContent = (order.seller && order.seller.totalOrders) ?? '-';
+
+        // Shipping address
+        const addressObj = order.shippingAddress;
+        const addressText = addressObj ? JSON.stringify(addressObj) : '-';
+        document.getElementById('shippingAddress').textContent = addressText;
+
+        // Timeline
+        const timelineEl = document.getElementById('timeline');
+        timelineEl.innerHTML = '';
+        (order.timeline || []).forEach(step => {
+          const li = document.createElement('li');
+          li.className = step.completed ? 'completed' : 'pending';
+          li.textContent = `${step.title} - ${step.date || 'Pending'}`;
+          timelineEl.appendChild(li);
+        });
+
+        // Review hint
+        const reviewHint = document.getElementById('reviewHint');
+        if (order.canReview) {
+          reviewHint.textContent = 'You can review this order.';
+        } else if (order.hasReview) {
+          reviewHint.textContent = 'Review already submitted.';
+        } else {
+          reviewHint.textContent = '';
+        }
+      })
+      .catch((err) => {
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'block';
+        errorEl.textContent = err.message + ' — You might need to log in first.';
+      });
+
+    // Configure Back button to point to frontend /order
+    (function(){
+      const backBtn = document.getElementById('backBtn');
+      // Prefer server-provided config
+      fetch('/config.json').then(r => r.json()).then(cfg => {
+        const base = (cfg && cfg.frontendUrl) || window.location.origin;
+        backBtn.href = String(base).replace(/\/$/, '') + '/orders';
+      }).catch(() => {
+        const stored = localStorage.getItem('FRONTEND_URL');
+        const frontendBase = stored && stored.trim() ? stored.trim() : window.location.origin;
+        backBtn.href = frontendBase.replace(/\/$/, '') + '/orders';
+      });
+    })();
+  </script>
+</body>
+</html>

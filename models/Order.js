@@ -55,13 +55,19 @@ const ORDER_BASE_SELECT = sql`
     seller.phone AS seller_phone,
     seller.address AS seller_address,
     seller.email AS seller_email,
+    seller.rating AS seller_rating,
+    seller.total_orders AS seller_total_orders,
     p.name AS product_name,
+    p.description AS product_description,
     p.images AS product_images,
     p.images[1] AS product_primary_image,
     p.category AS product_category,
     p.price_per_day AS product_price_per_day,
     p.sale_percentage AS product_sale_percentage,
-    p.location AS product_location
+    p.location AS product_location,
+    p.condition AS product_condition,
+    p.status AS product_status,
+    (SELECT get_product_avg_rating(p.product_id)) AS product_average_rating
   FROM "Order" o
   JOIN "Product" p ON o.product_id = p.product_id
   LEFT JOIN "User" customer ON o.customer_id = customer.user_id
@@ -244,6 +250,8 @@ const mapOrderRow = (row) => {
     phone: row.seller_phone || null,
     email: row.seller_email || null,
     address: row.seller_address || null,
+    rating: row.seller_rating ?? null,
+    totalOrders: row.seller_total_orders ?? null,
   };
 
   const product = {
@@ -255,6 +263,10 @@ const mapOrderRow = (row) => {
     location: row.product_location || null,
     pricePerDay: safeNumber(row.product_price_per_day, 0),
     salePercentage: row.product_sale_percentage ?? null,
+    description: row.product_description || null,
+    condition: row.product_condition || null,
+    status: row.product_status || null,
+    averageRating: row.product_average_rating ?? null,
     size: row.product_size || null,
     color: row.product_color || null,
     rentalPeriod: row.rental_period || null,

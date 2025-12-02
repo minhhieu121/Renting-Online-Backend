@@ -141,6 +141,59 @@ class SimpleEmailService {
       throw new Error('Failed to send password reset email');
     }
   }
+
+  async sendOrderEmail(userEmail, order) {
+    const forceSend = process.env.SEND_EMAILS === 'true';
+
+    const subject = `Order ${order.orderNumber} - Status: ${order.status}`;
+    const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:3456'}/orders/${order.orderNumber}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+        <h2 style="color:#333;">Order Confirmation</h2>
+        <p>Thank you for your order. Below are your order details:</p>
+        <ul style="line-height:1.7;">
+          <li><strong>Order Number:</strong> ${order.orderNumber}</li>
+          <li><strong>Status:</strong> ${order.status}</li>
+          <li><strong>Product ID:</strong> ${order.productId}</li>
+          <li><strong>Quantity:</strong> ${order.quantity}</li>
+          <li><strong>Total:</strong> ${typeof order.totalAmount !== 'undefined' ? order.totalAmount : ''}</li>
+        </ul>
+        <div style="margin: 24px 0;">
+          <a href="${orderUrl}" style="background:#4CAF50;color:#fff;padding:10px 18px;text-decoration:none;border-radius:4px;display:inline-block;">View Order</a>
+        </div>
+        <p style="color:#666;font-size:12px;">If you did not place this order, please contact support.</p>
+      </div>
+    `;
+
+    // In dev default, log instead of sending unless forced
+    if (process.env.NODE_ENV !== 'production' && !forceSend) {
+      console.log('=== ORDER EMAIL (dev) ===');
+      console.log(`To: ${userEmail}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Order URL: ${orderUrl}`);
+      console.log('==========================');
+      return { messageId: 'dev-mode' };
+    }
+
+    await this.initialize();
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: userEmail,
+      subject,
+      html,
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('Order email sent successfully to:', userEmail);
+      return result;
+    } catch (error) {
+      console.error('Error sending order email:', error);
+      throw new Error('Failed to send order email');
+    }
+  }
 }
 
 module.exports = new SimpleEmailService();

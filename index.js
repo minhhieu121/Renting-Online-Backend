@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require("express");
+const path = require('path');
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const swaggerUi = require("swagger-ui-express");
@@ -42,6 +43,18 @@ app.use(cookieParser());
 
 // Serve static files from public directory
 app.use(express.static('public'));
+
+// Serve Order Details UI (static HTML) for deep links like /orders/:orderNumber
+app.get('/orders/:orderNumber', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'order-details.html'));
+});
+
+// Expose minimal runtime config for static pages
+app.get('/config.json', (req, res) => {
+  res.json({
+    frontendUrl: process.env.NEW_FRONTEND_URL || process.env.FRONTEND_URL || `http://localhost:${PORT}`,
+  });
+});
 
 // Health check route
 app.get('/health', (req, res) => {
